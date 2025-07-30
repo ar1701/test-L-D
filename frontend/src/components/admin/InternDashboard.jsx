@@ -64,6 +64,9 @@ import {
   Calendar as CalendarIcon,
   Menu,
   X,
+  Clipboard,
+  EyeOff,
+  Check,
 } from "lucide-react";
 import { apiService } from "../../services/api";
 import { NotificationDropdown } from "../ui/notifications";
@@ -137,6 +140,20 @@ export function InternDashboard({ user, onLogout }) {
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [activeMobileSection, setActiveMobileSection] =
     useState("customer-requests");
+
+  // Demo Account Filter states
+  const [demoStatusFilter, setDemoStatusFilter] = useState("all");
+  const [demoIndustryFilter, setDemoIndustryFilter] = useState("all");
+  const [demoSearchFilter, setDemoSearchFilter] = useState("");
+  const [demoDateRangeFilter, setDemoDateRangeFilter] = useState({
+    start: "",
+    end: "",
+  });
+  const [isDemoMobileFiltersOpen, setIsDemoMobileFiltersOpen] = useState(false);
+
+  // Password visibility and copy feedback state
+  const [visiblePasswords, setVisiblePasswords] = useState({}); // { [demoId]: true/false }
+  const [copied, setCopied] = useState({}); // { [demoId-field]: true/false }
 
   useEffect(() => {
     loadData();
@@ -321,6 +338,57 @@ export function InternDashboard({ user, onLogout }) {
     return true;
   });
 
+  // Clear demo account filters
+  const clearDemoFilters = () => {
+    setDemoStatusFilter("all");
+    setDemoIndustryFilter("all");
+    setDemoSearchFilter("");
+    setDemoDateRangeFilter({ start: "", end: "" });
+  };
+
+  // Apply filters to demo accounts
+  const filteredDemoAccounts = demoAccounts.filter((demo) => {
+    // Status filter (active/expired)
+    if (demoStatusFilter !== "all") {
+      const isExpired = new Date(demo.expires_at) < new Date();
+      const isActive = demo.is_active && !isExpired;
+      if (demoStatusFilter === "active" && !isActive) return false;
+      if (demoStatusFilter === "expired" && isActive) return false;
+    }
+
+    // Industry filter
+    if (
+      demoIndustryFilter !== "all" &&
+      demo.industry_domain !== demoIndustryFilter
+    )
+      return false;
+
+    // Search filter (searches in customer name, company, email, phone)
+    if (demoSearchFilter) {
+      const searchTerm = demoSearchFilter.toLowerCase();
+      const searchableText =
+        `${demo.first_name} ${demo.last_name} ${demo.company} ${demo.email} ${demo.phone}`.toLowerCase();
+      if (!searchableText.includes(searchTerm)) return false;
+    }
+
+    // Date range filter
+    if (demoDateRangeFilter.start || demoDateRangeFilter.end) {
+      const demoDate = new Date(demo.created_at);
+      if (
+        demoDateRangeFilter.start &&
+        demoDate < new Date(demoDateRangeFilter.start)
+      )
+        return false;
+      if (
+        demoDateRangeFilter.end &&
+        demoDate > new Date(demoDateRangeFilter.end)
+      )
+        return false;
+    }
+
+    return true;
+  });
+
   // Stats calculations
   const stats = {
     totalAssigned: requests.length,
@@ -330,9 +398,19 @@ export function InternDashboard({ user, onLogout }) {
     ).length,
     pending: requests.filter((r) => r.status === "pending").length,
     totalDemoAccounts: demoAccounts.length,
+    filteredDemoAccounts: filteredDemoAccounts.length,
     activeDemoAccounts: demoAccounts.filter(
       (demo) => demo.is_active && new Date(demo.expires_at) > new Date()
     ).length,
+  };
+
+  // Copy to clipboard handler
+  const handleCopy = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setCopied((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopied((prev) => ({ ...prev, [key]: false }));
+    }, 1200);
   };
 
   return (
@@ -1202,6 +1280,14 @@ export function InternDashboard({ user, onLogout }) {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <Button
+                    onClick={clearDemoFilters}
+                    variant="outline"
+                    className="bg-white/80 hover:bg-white border-gray-300 w-full sm:w-auto"
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Clear Filters
+                  </Button>
+                  <Button
                     onClick={loadData}
                     className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 w-full sm:w-auto"
                   >
@@ -1216,9 +1302,214 @@ export function InternDashboard({ user, onLogout }) {
               <div className="text-sm text-gray-600 mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 p-3 rounded-lg border border-indigo-200/50">
                 <div className="flex items-center">
                   <Shield className="h-4 w-4 mr-2 text-indigo-600" />
-                  Showing {demoAccounts.length} assigned demo accounts
+                  Showing {filteredDemoAccounts.length} of {demoAccounts.length}{" "}
+                  demo accounts
                 </div>
               </div>
+
+              {/* Mobile Filter Toggle */}
+              <div className="flex items-center justify-between mb-6 md:hidden">
+                <h3 className="text-lg font-medium text-gray-900">Filters</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setIsDemoMobileFiltersOpen(!isDemoMobileFiltersOpen)
+                  }
+                  className="border-gray-300"
+                >
+                  {isDemoMobileFiltersOpen ? (
+                    <X className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Menu className="h-4 w-4 mr-2" />
+                  )}
+                  {isDemoMobileFiltersOpen ? "Hide" : "Show"} Filters
+                </Button>
+              </div>
+
+              {/* Desktop Filters - Always visible on medium+ screens */}
+              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl border border-gray-200/50 shadow-sm">
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Status</Label>
+                  <Select
+                    value={demoStatusFilter}
+                    onValueChange={setDemoStatusFilter}
+                  >
+                    <SelectTrigger className="bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Industry</Label>
+                  <Select
+                    value={demoIndustryFilter}
+                    onValueChange={setDemoIndustryFilter}
+                  >
+                    <SelectTrigger className="bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="all">All Industries</SelectItem>
+                      {industryDomains.map((industry) => (
+                        <SelectItem key={industry} value={industry}>
+                          {industry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Search</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search demo accounts..."
+                      value={demoSearchFilter}
+                      onChange={(e) => setDemoSearchFilter(e.target.value)}
+                      className="pl-10 bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Date From</Label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="date"
+                      value={demoDateRangeFilter.start}
+                      onChange={(e) =>
+                        setDemoDateRangeFilter((prev) => ({
+                          ...prev,
+                          start: e.target.value,
+                        }))
+                      }
+                      className="pl-10 bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Date To</Label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="date"
+                      value={demoDateRangeFilter.end}
+                      onChange={(e) =>
+                        setDemoDateRangeFilter((prev) => ({
+                          ...prev,
+                          end: e.target.value,
+                        }))
+                      }
+                      className="pl-10 bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Filters - Collapsible */}
+              {isDemoMobileFiltersOpen && (
+                <div className="md:hidden mb-6 space-y-4 p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl border border-gray-200/50 shadow-sm">
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Status</Label>
+                    <Select
+                      value={demoStatusFilter}
+                      onValueChange={setDemoStatusFilter}
+                    >
+                      <SelectTrigger className="bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="expired">Expired</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">
+                      Industry
+                    </Label>
+                    <Select
+                      value={demoIndustryFilter}
+                      onValueChange={setDemoIndustryFilter}
+                    >
+                      <SelectTrigger className="bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        <SelectItem value="all">All Industries</SelectItem>
+                        {industryDomains.map((industry) => (
+                          <SelectItem key={industry} value={industry}>
+                            {industry}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search demo accounts..."
+                        value={demoSearchFilter}
+                        onChange={(e) => setDemoSearchFilter(e.target.value)}
+                        className="pl-10 bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">
+                      Date From
+                    </Label>
+                    <div className="relative">
+                      <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        type="date"
+                        value={demoDateRangeFilter.start}
+                        onChange={(e) =>
+                          setDemoDateRangeFilter((prev) => ({
+                            ...prev,
+                            start: e.target.value,
+                          }))
+                        }
+                        className="pl-10 bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Date To</Label>
+                    <div className="relative">
+                      <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        type="date"
+                        value={demoDateRangeFilter.end}
+                        onChange={(e) =>
+                          setDemoDateRangeFilter((prev) => ({
+                            ...prev,
+                            end: e.target.value,
+                          }))
+                        }
+                        className="pl-10 bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {loading ? (
                 <div className="text-center py-12">
@@ -1268,7 +1559,7 @@ export function InternDashboard({ user, onLogout }) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {demoAccounts.length === 0 ? (
+                      {filteredDemoAccounts.length === 0 ? (
                         <TableRow>
                           <TableCell
                             colSpan={11}
@@ -1277,17 +1568,20 @@ export function InternDashboard({ user, onLogout }) {
                             <div className="flex flex-col items-center">
                               <Shield className="h-12 w-12 text-gray-300 mb-4" />
                               <p className="text-lg font-medium">
-                                No demo accounts assigned to you yet
+                                {demoAccounts.length === 0
+                                  ? "No demo accounts assigned to you yet"
+                                  : "No demo accounts match your filters"}
                               </p>
                               <p className="text-sm">
-                                Demo accounts will appear here when assigned by
-                                admin
+                                {demoAccounts.length === 0
+                                  ? "Demo accounts will appear here when assigned by admin"
+                                  : "Try adjusting your filters to see more results"}
                               </p>
                             </div>
                           </TableCell>
                         </TableRow>
                       ) : (
-                        demoAccounts.map((demo, index) => {
+                        filteredDemoAccounts.map((demo, index) => {
                           const isExpired =
                             new Date(demo.expires_at) < new Date();
                           const isActive = demo.is_active && !isExpired;
@@ -1333,10 +1627,68 @@ export function InternDashboard({ user, onLogout }) {
                                 </Badge>
                               </TableCell>
                               <TableCell className="font-mono text-sm text-gray-800">
-                                {demo.username}
+                                <div className="flex items-center gap-2">
+                                  {demo.username}
+                                  <button
+                                    onClick={() =>
+                                      handleCopy(
+                                        demo.username,
+                                        `${demo.id}-username`
+                                      )
+                                    }
+                                    className="ml-1 p-1 rounded hover:bg-gray-100 focus:outline-none"
+                                    title="Copy username"
+                                  >
+                                    {copied[`${demo.id}-username`] ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Clipboard className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </button>
+                                </div>
                               </TableCell>
                               <TableCell className="font-mono text-sm text-gray-800">
-                                {demo.password}
+                                <div className="flex items-center gap-2">
+                                  {visiblePasswords[demo.id]
+                                    ? demo.password
+                                    : "•".repeat(demo.password.length)}
+                                  <button
+                                    onClick={() =>
+                                      setVisiblePasswords((prev) => ({
+                                        ...prev,
+                                        [demo.id]: !prev[demo.id],
+                                      }))
+                                    }
+                                    className="ml-1 p-1 rounded hover:bg-gray-100 focus:outline-none"
+                                    title={
+                                      visiblePasswords[demo.id]
+                                        ? "Hide password"
+                                        : "Show password"
+                                    }
+                                  >
+                                    {visiblePasswords[demo.id] ? (
+                                      <EyeOff className="h-4 w-4 text-gray-400" />
+                                    ) : (
+                                      <Eye className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleCopy(
+                                        demo.password,
+                                        `${demo.id}-password`
+                                      )
+                                    }
+                                    className="ml-1 p-1 rounded hover:bg-gray-100 focus:outline-none"
+                                    title="Copy password"
+                                  >
+                                    {copied[`${demo.id}-password`] ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Clipboard className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </button>
+                                </div>
                               </TableCell>
                               <TableCell>
                                 <Badge
