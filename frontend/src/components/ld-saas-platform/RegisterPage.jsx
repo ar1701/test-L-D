@@ -134,9 +134,9 @@ export default function RegisterPage() {
     phone: "",
     industryDomain: "",
     domainType: "predefined",
-    smartcardUsage: "",
-    smartcardUsageType: "predefined",
     primaryUseCase: "",
+    primaryUseCaseType: "predefined",
+    customPrimaryUseCase: "",
     // Demo-specific fields
     selectedIntegrations: [],
     customIntegration: "",
@@ -155,8 +155,36 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // Prepare submission data
+      // Prepare submission data with proper field mapping
       const submissionData = { ...formData, accountType };
+
+      // For L&D accounts, ensure proper field mapping for custom use cases
+      if (accountType === "ld") {
+        // Handle primary use case field mapping
+        if (formData.primaryUseCaseType === "custom") {
+          submissionData.primaryUseCase = formData.customPrimaryUseCase;
+        }
+
+        // Validate required primary use case
+        if (
+          formData.primaryUseCaseType === "predefined" &&
+          !formData.primaryUseCase
+        ) {
+          setError("Please select your primary use case for Smartcard AI");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (
+          formData.primaryUseCaseType === "custom" &&
+          !formData.customPrimaryUseCase
+        ) {
+          setError("Please enter your custom use case for Smartcard AI");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       console.log("Registration data:", submissionData);
 
       // Call the API
@@ -167,14 +195,12 @@ export default function RegisterPage() {
         if (accountType === "ld") {
           setShowSuccessDialog(true);
         } else {
-          // For demo accounts, generate demo credentials (existing behavior)
-          const demoUsername = `demo_${Math.random()
-            .toString(36)
-            .substring(2, 8)}`;
-          const demoPassword = Math.random().toString(36).substring(2, 10);
-
+          // For demo accounts, use the credentials from the backend response
+          const { username, password, expires_at } = response.data;
           navigate(
-            `/user-portal/register/success?username=${demoUsername}&password=${demoPassword}&type=${accountType}`
+            `/user-portal/register-success?username=${username}&password=${password}&expires_at=${expires_at}&type=${accountType}&message=${encodeURIComponent(
+              response.data.message
+            )}`
           );
         }
       } else {
@@ -368,53 +394,78 @@ export default function RegisterPage() {
               {/* L&D-specific fields */}
               {accountType === "ld" && (
                 <>
-                  {/* Smartcard AI Data Visualization */}
+                  {/* How would you like to use Smartcard AI? - Required with custom option */}
                   <div className="space-y-2">
-                    <Label htmlFor="smartcardUsage">
-                      Smartcard AI Data Visualization
+                    <Label htmlFor="primaryUseCaseType">
+                      How would you like to use Smartcard AI? *
                     </Label>
                     <Select
-                      value={formData.smartcardUsage}
+                      value={formData.primaryUseCaseType}
                       onValueChange={(value) =>
-                        handleInputChange("smartcardUsage", value)
+                        handleInputChange("primaryUseCaseType", value)
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select common use case" />
+                        <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {smartcardUseCases.map((useCase) => (
-                          <SelectItem key={useCase} value={useCase}>
-                            {useCase}
-                          </SelectItem>
-                        ))}
+                      <SelectContent>
+                        <SelectItem value="predefined">
+                          Select from common use cases
+                        </SelectItem>
+                        <SelectItem value="custom">
+                          Enter custom use case
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* How would you like to use Smartcard AI? */}
-                  <div className="space-y-2">
-                    <Label htmlFor="primaryUseCase">
-                      How would you like to use Smartcard AI?
-                    </Label>
-                    <Select
-                      value={formData.primaryUseCase}
-                      onValueChange={(value) =>
-                        handleInputChange("primaryUseCase", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your primary use case" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {smartcardUseCases.map((useCase) => (
-                          <SelectItem key={useCase} value={useCase}>
-                            {useCase}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {formData.primaryUseCaseType === "predefined" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryUseCase">
+                        Select Common Use Case
+                      </Label>
+                      <Select
+                        value={formData.primaryUseCase}
+                        onValueChange={(value) =>
+                          handleInputChange("primaryUseCase", value)
+                        }
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your common use case" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {smartcardUseCases.map((useCase) => (
+                            <SelectItem key={useCase} value={useCase}>
+                              {useCase}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="customPrimaryUseCase">
+                        Custom Use Case
+                      </Label>
+                      <Textarea
+                        id="customPrimaryUseCase"
+                        placeholder="Describe your specific use case for Smartcard AI..."
+                        value={formData.customPrimaryUseCase}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "customPrimaryUseCase",
+                            e.target.value
+                          )
+                        }
+                        rows={3}
+                        required
+                      />
+                      <p className="text-xs text-gray-500">
+                        Please describe your specific use case for Smartcard AI
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -540,7 +591,7 @@ export default function RegisterPage() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select your primary use case" />
+                        <SelectValue placeholder="Select your common use case" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
                         {demoTestingUseCases.map((useCase) => (
@@ -593,15 +644,6 @@ export default function RegisterPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <Link to="/login" className="text-blue-600 hover:underline">
-                  Sign in
-                </Link>
-              </p>
-            </div>
           </CardContent>
         </Card>
 

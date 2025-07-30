@@ -33,7 +33,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Handle unauthorized access
       localStorage.removeItem("authToken");
-      window.location.href = "/login";
+      // Don't redirect automatically - let the component handle the error
+      // This prevents unwanted redirects when login fails
     }
     return Promise.reject(error);
   }
@@ -71,15 +72,100 @@ export const apiService = {
     // Interns
     getInterns: () => apiClient.get("/admin/interns"),
     createIntern: (internData) => apiClient.post("/admin/interns", internData),
+    updateInternCredentials: (internId, credentials) =>
+      apiClient.put(`/admin/interns/${internId}/credentials`, credentials),
+    deleteIntern: (internId) => apiClient.delete(`/admin/interns/${internId}`),
+    updateIntern: (internId, internData) =>
+      apiClient.put(`/admin/interns/${internId}`, internData),
 
     // Customers (Free trial requests)
     getCustomers: () => apiClient.get("/admin/customers"),
+    getCompanies: () => apiClient.get("/admin/companies"),
+    getAllCompanies: () => apiClient.get("/admin/all-companies"),
+    updateDashboardCounts: (requestId, data) =>
+      apiClient.put(`/admin/customers/${requestId}/dashboards`, data),
+    deleteCustomer: (customerId) =>
+      apiClient.delete(`/admin/customers/${customerId}`),
+    updateCustomer: (customerId, customerData) =>
+      apiClient.put(`/admin/customers/${customerId}`, customerData),
     assignIntern: (requestId, internId) =>
       apiClient.post(`/admin/requests/${requestId}/assign`, {
         intern_id: internId,
       }),
     updateRequestStatus: (requestId, status) =>
       apiClient.put(`/admin/requests/${requestId}/status`, { status }),
+    updateProjectDetails: (requestId, projectData) =>
+      apiClient.put(`/admin/requests/${requestId}/project`, projectData),
+
+    // Demo Accounts
+    getDemoAccounts: () => apiClient.get("/admin/demos"),
+    deleteDemoAccount: (demoId) => apiClient.delete(`/admin/demos/${demoId}`),
+    updateDemoAccount: (demoId, demoData) =>
+      apiClient.put(`/admin/demos/${demoId}`, demoData),
+    regenerateDemoCredentials: (demoId) =>
+      apiClient.post(`/admin/demos/${demoId}/regenerate-credentials`),
+    assignInternToDemo: (demoId, internId) =>
+      apiClient.post(`/admin/demos/${demoId}/assign-intern`, {
+        intern_id: internId,
+      }),
+    updateDemoAdminNote: (demoId, adminNote) =>
+      apiClient.put(`/admin/demos/${demoId}/admin-note`, {
+        admin_note: adminNote,
+      }),
+    updateDemoInternNote: (demoId, internNote) =>
+      apiClient.put(`/admin/demos/${demoId}/intern-note`, {
+        intern_note: internNote,
+      }),
+  },
+
+  // Notifications
+  notifications: {
+    getNotifications: (
+      recipientType,
+      recipientId = null,
+      limit = 50,
+      unreadOnly = false
+    ) => {
+      const params = new URLSearchParams({ limit: limit.toString() });
+      if (recipientId) params.append("recipient_id", recipientId.toString());
+      if (unreadOnly) params.append("unread_only", "true");
+      return apiClient.get(`/notifications/${recipientType}?${params}`);
+    },
+    getUnreadCount: (recipientType, recipientId = null) => {
+      const params = new URLSearchParams();
+      if (recipientId) params.append("recipient_id", recipientId.toString());
+      return apiClient.get(
+        `/notifications/${recipientType}/unread-count?${params}`
+      );
+    },
+    markAsRead: (notificationId) =>
+      apiClient.put(`/notifications/${notificationId}/read`),
+    markAllAsRead: (recipientType, recipientId = null) => {
+      const params = new URLSearchParams();
+      if (recipientId) params.append("recipient_id", recipientId.toString());
+      return apiClient.put(
+        `/notifications/${recipientType}/mark-all-read?${params}`
+      );
+    },
+    deleteNotification: (notificationId) =>
+      apiClient.delete(`/notifications/${notificationId}`),
+  },
+
+  // Intern methods
+  intern: {
+    getRequests: (internId) =>
+      apiClient.get(`/intern/requests?intern_id=${internId}`),
+    updateNote: (requestId, note) =>
+      apiClient.put(`/intern/requests/${requestId}/note`, {
+        intern_note: note,
+      }),
+    getDemoAccounts: (internId) =>
+      apiClient.get(`/intern/demos?intern_id=${internId}`),
+    updateDemoNote: (demoId, note, internId) =>
+      apiClient.put(`/intern/demos/${demoId}/note`, {
+        intern_note: note,
+        intern_id: internId,
+      }),
   },
 };
 

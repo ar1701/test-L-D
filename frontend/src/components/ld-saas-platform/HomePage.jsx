@@ -26,12 +26,6 @@ export default function HomePage() {
           </div>
           <nav className="hidden md:flex space-x-6">
             <Link
-              to="/user-portal/login"
-              className="text-gray-600 hover:text-gray-900"
-            >
-              Login
-            </Link>
-            <Link
               to="/user-portal/register"
               className="text-gray-600 hover:text-gray-900"
             >

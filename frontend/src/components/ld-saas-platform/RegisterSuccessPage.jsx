@@ -23,6 +23,7 @@ export default function RegisterSuccessPage() {
       password: searchParams.get("password") || "",
       type: searchParams.get("type") || "ld",
       message: searchParams.get("message") || "",
+      expires_at: searchParams.get("expires_at") || "",
     };
   }, [searchParams]);
 
@@ -35,10 +36,12 @@ export default function RegisterSuccessPage() {
   };
 
   const startDate = new Date();
-  const endDate = new Date();
-  if (credentials.type === "demo") {
+  const endDate = credentials.expires_at
+    ? new Date(credentials.expires_at)
+    : new Date();
+  if (credentials.type === "demo" && !credentials.expires_at) {
     endDate.setDate(startDate.getDate() + 10);
-  } else {
+  } else if (credentials.type === "ld") {
     endDate.setMonth(startDate.getMonth() + 1);
   }
 
@@ -189,13 +192,10 @@ export default function RegisterSuccessPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/user-portal/dashboard" className="flex-1">
-                <Button className="w-full">Go to Dashboard</Button>
-              </Link>
-              <Link to="/user-portal/login" className="flex-1">
-                <Button variant="outline" className="w-full bg-transparent">
-                  Test Demo Login
+            <div className="flex justify-center">
+              <Link to="/" className="w-full max-w-sm">
+                <Button className="w-full bg-green-600 hover:bg-green-700">
+                  Go to Home
                 </Button>
               </Link>
             </div>

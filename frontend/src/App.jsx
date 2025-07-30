@@ -11,13 +11,12 @@ import { ThemeProvider } from "./components/theme-provider";
 // Admin Components
 import { AdminLogin } from "./components/admin/AdminLogin";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
+import { InternDashboard } from "./components/admin/InternDashboard";
 
 // LD SaaS Platform Components
 import HomePage from "./components/ld-saas-platform/HomePage";
-import LoginPage from "./components/ld-saas-platform/LoginPage";
 import RegisterPage from "./components/ld-saas-platform/RegisterPage";
 import DashboardPage from "./components/ld-saas-platform/DashboardPage";
-import AdminPage from "./components/ld-saas-platform/AdminPage";
 import RegisterSuccessPage from "./components/ld-saas-platform/RegisterSuccessPage";
 
 // API Service
@@ -110,7 +109,7 @@ function App() {
             {/* Legacy routes for backward compatibility */}
             <Route
               path="/login"
-              element={<Navigate to="/user-portal/login" replace />}
+              element={<Navigate to="/user-portal/register" replace />}
             />
             <Route
               path="/register"
@@ -134,30 +133,41 @@ function App() {
 function AdminPortalRoute({ user, onLogin, onLogout }) {
   const location = useLocation();
 
-  // If user is not logged in or not an admin, show login
-  if (!user || user.role !== "admin") {
+  // If user is not logged in, show login
+  if (!user) {
     return <AdminLogin onLogin={onLogin} />;
   }
 
-  return (
-    <div>
-      <div className="bg-white border-b px-4 py-2">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <span className="text-sm text-gray-600">Admin Portal</span>
-          <div className="flex items-center gap-4">
-            <span className="text-sm">Welcome, {user.name}</span>
-            <button
-              onClick={onLogout}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Logout
-            </button>
+  // If user is admin, show admin dashboard
+  if (user.role === "admin") {
+    return (
+      <div>
+        <div className="bg-white border-b px-4 py-2">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <span className="text-sm text-gray-600">Admin Portal</span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm">Welcome, {user.name}</span>
+              <button
+                onClick={onLogout}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
+        <AdminDashboard />
       </div>
-      <AdminDashboard />
-    </div>
-  );
+    );
+  }
+
+  // If user is intern, redirect to intern dashboard
+  if (user.role === "intern") {
+    return <Navigate to="/user-portal/intern" replace />;
+  }
+
+  // For any other role, show login
+  return <AdminLogin onLogin={onLogin} />;
 }
 
 // User Portal Component with nested routing
@@ -165,7 +175,6 @@ function UserPortalRoute({ user, onLogin, onLogout }) {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage onLogin={onLogin} />} />
       <Route path="/register" element={<RegisterPage onLogin={onLogin} />} />
       <Route path="/register-success" element={<RegisterSuccessPage />} />
       <Route
@@ -174,19 +183,24 @@ function UserPortalRoute({ user, onLogin, onLogout }) {
           user ? (
             <DashboardPage user={user} onLogout={onLogout} />
           ) : (
-            <Navigate to="/user-portal/login" replace />
+            <Navigate to="/user-portal/register" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/intern"
+        element={
+          user && user.role === "intern" ? (
+            <InternDashboard user={user} onLogout={onLogout} />
+          ) : (
+            <Navigate to="/admin-portal" replace />
           )
         }
       />
       <Route
-        path="/admin"
-        element={
-          user && user.role === "admin" ? (
-            <AdminPage user={user} onLogout={onLogout} />
-          ) : (
-            <Navigate to="/user-portal/login" replace />
-          )
-        }
+        path="*"
+        element={<Navigate to="/user-portal/register" replace />}
       />
     </Routes>
   );
