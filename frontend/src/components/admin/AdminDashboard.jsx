@@ -72,13 +72,14 @@ import {
   MessageSquare,
   Phone,
   MessageCircle,
-  Menu,
   Search,
   Building,
   User,
   Trash2,
   Bell,
   MessageCircleIcon,
+  Menu,
+  X,
 } from "lucide-react";
 import { apiService } from "../../services/api";
 import { NotificationDropdown } from "../ui/notifications";
@@ -266,6 +267,10 @@ export function AdminDashboard() {
   });
   const [searchFilter, setSearchFilter] = useState("");
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [isMobileInternFiltersOpen, setIsMobileInternFiltersOpen] =
+    useState(false);
+  const [isMobileDemoFiltersOpen, setIsMobileDemoFiltersOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("customer-records");
 
   // Advanced intern filter states
   const [internIntegrationFilter, setInternIntegrationFilter] = useState("all");
@@ -1298,8 +1303,73 @@ export function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
+      {/* Mobile Header */}
+      <div className="sm:hidden bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">Admin Dashboard</h1>
+              <p className="text-xs text-blue-100">Welcome, Admin User</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <NotificationDropdown recipientType="admin" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 border-white/30 text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl w-48"
+              >
+                <DropdownMenuItem
+                  onClick={() => setIsAddInternDialogOpen(true)}
+                  className="py-3 px-4 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        Add Intern
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Create new intern account
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsAddCustomerDialogOpen(true)}
+                  className="py-3 px-4 hover:bg-emerald-50 focus:bg-emerald-50 cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Database className="h-4 w-4 text-emerald-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        Add Customer
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Create customer record
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Header */}
+      <div className="hidden sm:block bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 gap-4">
             <div className="flex items-center">
@@ -1507,12 +1577,6 @@ export function AdminDashboard() {
                 open={isAddCustomerDialogOpen}
                 onOpenChange={setIsAddCustomerDialogOpen}
               >
-                <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md w-full sm:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Customer
-                  </Button>
-                </DialogTrigger>
                 <DialogContent className="bg-white/95 backdrop-blur-sm">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold text-gray-900">
@@ -1721,9 +1785,55 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {/* Mobile Stats Cards */}
+        <div className="sm:hidden mb-6">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl mx-auto mb-2">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.totalInterns}
+                </div>
+                <div className="text-xs text-gray-600">Total Interns</div>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl mx-auto mb-2">
+                  <Database className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.totalCustomers}
+                </div>
+                <div className="text-xs text-gray-600">Total Customers</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl mx-auto mb-2">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.activeRecords}
+                </div>
+                <div className="text-xs text-gray-600">Active Records</div>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl mx-auto mb-2">
+                  <BarChart3 className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.avgDashboards}
+                </div>
+                <div className="text-xs text-gray-600">Avg Dashboards</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Stats Cards */}
+        <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200/50 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-900">
@@ -1800,8 +1910,93 @@ export function AdminDashboard() {
         )}
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="customer-records" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm shadow-sm border border-gray-200/50">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
+          {/* Mobile Navigation */}
+          <div className="sm:hidden">
+            <div className="bg-gradient-to-r from-white/95 to-gray-50/95 backdrop-blur-sm rounded-2xl shadow-xl border border-white/60 p-1 mb-6">
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  onClick={() => setActiveTab("customer-records")}
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 ${
+                    activeTab === "customer-records"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105"
+                      : "text-gray-600 hover:bg-white/50"
+                  }`}
+                >
+                  <Database
+                    className={`h-6 w-6 mb-2 ${
+                      activeTab === "customer-records"
+                        ? "text-white"
+                        : "text-blue-600"
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-center leading-tight">
+                    Customer
+                    <br />
+                    Records
+                  </span>
+                  {activeTab === "customer-records" && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab("intern-management")}
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 ${
+                    activeTab === "intern-management"
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg scale-105"
+                      : "text-gray-600 hover:bg-white/50"
+                  }`}
+                >
+                  <Users
+                    className={`h-6 w-6 mb-2 ${
+                      activeTab === "intern-management"
+                        ? "text-white"
+                        : "text-emerald-600"
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-center leading-tight">
+                    Intern
+                    <br />
+                    Management
+                  </span>
+                  {activeTab === "intern-management" && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab("demo-accounts")}
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 ${
+                    activeTab === "demo-accounts"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg scale-105"
+                      : "text-gray-600 hover:bg-white/50"
+                  }`}
+                >
+                  <Shield
+                    className={`h-6 w-6 mb-2 ${
+                      activeTab === "demo-accounts"
+                        ? "text-white"
+                        : "text-purple-600"
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-center leading-tight">
+                    Demo
+                    <br />
+                    Accounts
+                  </span>
+                  {activeTab === "demo-accounts" && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Tab List */}
+          <TabsList className="hidden sm:grid grid-cols-3 w-full bg-white/80 backdrop-blur-sm shadow-sm border border-gray-200/50">
             <TabsTrigger
               value="customer-records"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
@@ -1822,7 +2017,19 @@ export function AdminDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="customer-records" className="space-y-6">
+          {/* Hidden tab triggers for mobile interaction */}
+          <div className="hidden">
+            <TabsList>
+              <TabsTrigger value="customer-records" />
+              <TabsTrigger value="intern-management" />
+              <TabsTrigger value="demo-accounts" />
+            </TabsList>
+          </div>
+
+          <TabsContent
+            value="customer-records"
+            className="space-y-4 sm:space-y-6"
+          >
             <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200/50">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -2749,7 +2956,10 @@ export function AdminDashboard() {
           </TabsContent>
 
           {/* Intern Management Tab */}
-          <TabsContent value="intern-management" className="space-y-6">
+          <TabsContent
+            value="intern-management"
+            className="space-y-4 sm:space-y-6"
+          >
             <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200/50">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -2761,15 +2971,7 @@ export function AdminDashboard() {
                       Manage intern accounts and credentials
                     </CardDescription>
                   </div>
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <Button
-                      variant="outline"
-                      onClick={loadData}
-                      className="bg-white/80 hover:bg-white border-gray-300"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -2779,17 +2981,44 @@ export function AdminDashboard() {
                         setInternCustomerCountFilter("all");
                         setInternSearchFilter("");
                       }}
-                      className="bg-white/80 hover:bg-white border-gray-300"
+                      className="bg-white/80 hover:bg-white border-gray-300 w-full sm:w-auto"
                     >
                       <Filter className="h-4 w-4 mr-2" />
                       Clear Filters
+                    </Button>
+                    <Button
+                      onClick={loadData}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 w-full sm:w-auto"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
                     </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                {/* Advanced Filtering Section */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6 p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200/50 shadow-sm">
+                {/* Mobile Filter Toggle */}
+                <div className="flex items-center justify-between mb-6 md:hidden">
+                  <h3 className="text-lg font-medium text-gray-900">Filters</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setIsMobileInternFiltersOpen(!isMobileInternFiltersOpen)
+                    }
+                    className="border-gray-300"
+                  >
+                    {isMobileInternFiltersOpen ? (
+                      <X className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Menu className="h-4 w-4 mr-2" />
+                    )}
+                    {isMobileInternFiltersOpen ? "Hide" : "Show"} Filters
+                  </Button>
+                </div>
+
+                {/* Desktop Filters - Always visible on large screens */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200/50 shadow-sm">
                   <div className="space-y-2">
                     <Label className="text-gray-700 font-medium">
                       Specialization
@@ -2886,6 +3115,114 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Mobile Filters - Collapsible */}
+                {isMobileInternFiltersOpen && (
+                  <div className="md:hidden space-y-4 mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200/50 shadow-sm">
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Specialization
+                      </Label>
+                      <Select
+                        value={internFilter}
+                        onValueChange={setInternFilter}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            All Specializations
+                          </SelectItem>
+                          <SelectItem value="L&D">L&D</SelectItem>
+                          <SelectItem value="Demo">Demo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Integration
+                      </Label>
+                      <Select
+                        value={internIntegrationFilter}
+                        onValueChange={setInternIntegrationFilter}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="all">All Integrations</SelectItem>
+                          {availableIntegrations.map((integration) => (
+                            <SelectItem key={integration} value={integration}>
+                              {integration}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Company
+                      </Label>
+                      <Select
+                        value={internCompanyFilter}
+                        onValueChange={setInternCompanyFilter}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="all">All Companies</SelectItem>
+                          {allCompanies.map((company) => (
+                            <SelectItem key={company} value={company}>
+                              {company}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Customer Count
+                      </Label>
+                      <Select
+                        value={internCustomerCountFilter}
+                        onValueChange={setInternCustomerCountFilter}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Counts</SelectItem>
+                          <SelectItem value="none">No Customers (0)</SelectItem>
+                          <SelectItem value="1-5">1-5 Customers</SelectItem>
+                          <SelectItem value="6-10">6-10 Customers</SelectItem>
+                          <SelectItem value="10+">10+ Customers</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Search
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search interns..."
+                          value={internSearchFilter}
+                          onChange={(e) =>
+                            setInternSearchFilter(e.target.value)
+                          }
+                          className="pl-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="text-sm text-gray-600 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200/50">
                   <div className="flex items-center">
                     <Users className="h-4 w-4 mr-2 text-blue-600" />
@@ -2893,35 +3230,35 @@ export function AdminDashboard() {
                   </div>
                 </div>
                 <div className="overflow-x-auto bg-white rounded-lg border border-gray-200/50 shadow-sm">
-                  <Table>
+                  <Table className="min-w-full">
                     <TableHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
                       <TableRow className="border-gray-200/50">
-                        <TableHead className="font-semibold text-gray-700 min-w-[150px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[150px] px-2 sm:px-4">
                           Name
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[120px] px-2 sm:px-4">
                           Username
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[120px] px-2 sm:px-4">
                           Password
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[200px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[200px] px-2 sm:px-4 hidden sm:table-cell">
                           Email
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[120px] px-2 sm:px-4 hidden md:table-cell">
                           Phone
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[120px] px-2 sm:px-4 hidden lg:table-cell">
                           WhatsApp
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[120px] px-2 sm:px-4">
                           Specialization
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[200px]">
+                        <TableHead className="font-semibold text-gray-700 min-w-[200px] px-2 sm:px-4 hidden lg:table-cell">
                           Integrations
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 min-w-[200px]">
-                          Customer Accounts
+                        <TableHead className="font-semibold text-gray-700 min-w-[150px] px-2 sm:px-4 hidden md:table-cell">
+                          Customers
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 min-w-[80px]">
                           Assigned
@@ -3190,27 +3527,63 @@ export function AdminDashboard() {
           </TabsContent>
 
           {/* Demo Accounts Management Tab */}
-          <TabsContent value="demo-accounts" className="space-y-6">
+          <TabsContent value="demo-accounts" className="space-y-4 sm:space-y-6">
             <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200/50">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <CardTitle className="text-gray-800 flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-600" />
-                    Demo Accounts Management
-                  </CardTitle>
-                  <Button
-                    variant="outline"
-                    onClick={loadData}
-                    className="bg-white/80 hover:bg-white border-gray-300"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
+                  <div>
+                    <CardTitle className="text-lg sm:text-xl text-gray-900">
+                      Demo Accounts
+                    </CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Manage demo account credentials and assignments
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Clear demo filters if any
+                        setIsMobileDemoFiltersOpen(false);
+                      }}
+                      className="bg-white/80 hover:bg-white border-gray-300 w-full sm:w-auto"
+                    >
+                      <Filter className="h-4 w-4 mr-2" />
+                      Clear Filters
+                    </Button>
+                    <Button
+                      onClick={loadData}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 w-full sm:w-auto"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                {/* Filters */}
-                <div className="mb-6 space-y-4">
+                {/* Mobile Filter Toggle */}
+                <div className="flex items-center justify-between mb-6 md:hidden">
+                  <h3 className="text-lg font-medium text-gray-900">Filters</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setIsMobileDemoFiltersOpen(!isMobileDemoFiltersOpen)
+                    }
+                    className="border-gray-300"
+                  >
+                    {isMobileDemoFiltersOpen ? (
+                      <X className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Menu className="h-4 w-4 mr-2" />
+                    )}
+                    {isMobileDemoFiltersOpen ? "Hide" : "Show"} Filters
+                  </Button>
+                </div>
+
+                {/* Desktop Filters - Always visible on medium+ screens */}
+                <div className="hidden md:block mb-6 space-y-4">
                   <div className="flex flex-wrap gap-4">
                     <div className="flex-1 min-w-[200px]">
                       <Label
@@ -3360,45 +3733,191 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Mobile Filters - Collapsible */}
+                {isMobileDemoFiltersOpen && (
+                  <div className="md:hidden mb-6 space-y-4 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200/50 shadow-sm">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="demo-search-mobile"
+                        className="text-gray-700 font-medium"
+                      >
+                        Search Demo Accounts
+                      </Label>
+                      <Input
+                        id="demo-search-mobile"
+                        placeholder="Search by name, email, company, or phone..."
+                        value={demoSearchFilter}
+                        onChange={(e) => setDemoSearchFilter(e.target.value)}
+                        className="bg-white border-gray-300"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Status
+                      </Label>
+                      <Select
+                        value={demoStatusFilter}
+                        onValueChange={setDemoStatusFilter}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="expired">Expired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Industry
+                      </Label>
+                      <Select
+                        value={demoIndustryFilter}
+                        onValueChange={setDemoIndustryFilter}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="all">All Industries</SelectItem>
+                          <SelectItem value="Healthcare">Healthcare</SelectItem>
+                          <SelectItem value="Agriculture">
+                            Agriculture
+                          </SelectItem>
+                          <SelectItem value="Drone Technology">
+                            Drone Technology
+                          </SelectItem>
+                          <SelectItem value="Manufacturing">
+                            Manufacturing
+                          </SelectItem>
+                          <SelectItem value="Information Technology">
+                            Information Technology
+                          </SelectItem>
+                          <SelectItem value="Finance & Banking">
+                            Finance & Banking
+                          </SelectItem>
+                          <SelectItem value="Education">Education</SelectItem>
+                          <SelectItem value="Retail & E-commerce">
+                            Retail & E-commerce
+                          </SelectItem>
+                          <SelectItem value="Construction">
+                            Construction
+                          </SelectItem>
+                          <SelectItem value="Automotive">Automotive</SelectItem>
+                          <SelectItem value="Aerospace">Aerospace</SelectItem>
+                          <SelectItem value="Energy & Utilities">
+                            Energy & Utilities
+                          </SelectItem>
+                          <SelectItem value="Telecommunications">
+                            Telecommunications
+                          </SelectItem>
+                          <SelectItem value="Real Estate">
+                            Real Estate
+                          </SelectItem>
+                          <SelectItem value="Food & Beverage">
+                            Food & Beverage
+                          </SelectItem>
+                          <SelectItem value="Logistics & Supply Chain">
+                            Logistics & Supply Chain
+                          </SelectItem>
+                          <SelectItem value="Pharmaceuticals">
+                            Pharmaceuticals
+                          </SelectItem>
+                          <SelectItem value="Media & Entertainment">
+                            Media & Entertainment
+                          </SelectItem>
+                          <SelectItem value="Government">Government</SelectItem>
+                          <SelectItem value="Non-Profit">Non-Profit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        Start Date
+                      </Label>
+                      <Input
+                        type="date"
+                        value={demoDateRangeFilter.start}
+                        onChange={(e) =>
+                          setDemoDateRangeFilter((prev) => ({
+                            ...prev,
+                            start: e.target.value,
+                          }))
+                        }
+                        className="bg-white border-gray-300"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-700 font-medium">
+                        End Date
+                      </Label>
+                      <Input
+                        type="date"
+                        value={demoDateRangeFilter.end}
+                        onChange={(e) =>
+                          setDemoDateRangeFilter((prev) => ({
+                            ...prev,
+                            end: e.target.value,
+                          }))
+                        }
+                        className="bg-white border-gray-300"
+                      />
+                    </div>
+                    <div>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setDemoStatusFilter("all");
+                          setDemoIndustryFilter("all");
+                          setDemoSearchFilter("");
+                          setDemoDateRangeFilter({ start: "", end: "" });
+                        }}
+                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Demo Accounts Table */}
                 <div className="rounded-lg border border-gray-200 overflow-hidden">
-                  <Table>
+                  <Table className="min-w-full">
                     <TableHeader>
                       <TableRow className="bg-gray-50">
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4">
                           Name & Contact
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden sm:table-cell">
                           Company
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden md:table-cell">
                           Industry
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
-                          Username
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4">
+                          Credentials
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
-                          Password
-                        </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
                           Status
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden md:table-cell">
                           Assigned Intern
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
                           Admin Note
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
                           Intern Note
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden xl:table-cell">
                           Created
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden xl:table-cell">
                           Expires
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-right">
+                        <TableHead className="font-semibold text-gray-700 text-right px-2 sm:px-4">
                           Actions
                         </TableHead>
                       </TableRow>
