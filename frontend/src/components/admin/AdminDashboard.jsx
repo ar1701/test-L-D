@@ -172,6 +172,17 @@ export function AdminDashboard() {
   // State for demo accounts
   const [demoAccounts, setDemoAccounts] = useState([]);
 
+  // State for new demo account creation
+  const [newDemoAccount, setNewDemoAccount] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    company: "",
+    phone: "",
+    industryDomain: "",
+    selectedIntegrations: [],
+  });
+
   // Load data on component mount
   useEffect(() => {
     loadData();
@@ -250,6 +261,8 @@ export function AdminDashboard() {
     useState(false);
   const [isAssignInternToDemoDialogOpen, setIsAssignInternToDemoDialogOpen] =
     useState(false);
+  const [isAddDemoAccountDialogOpen, setIsAddDemoAccountDialogOpen] =
+    useState(false);
 
   // Filter states
   // Filter states
@@ -261,6 +274,7 @@ export function AdminDashboard() {
     useState("all");
   const [useCaseFilter, setUseCaseFilter] = useState("all");
   const [industryFilter, setIndustryFilter] = useState("all");
+  const [internAssignmentFilter, setInternAssignmentFilter] = useState("all");
   const [dateRangeFilter, setDateRangeFilter] = useState({
     start: "",
     end: "",
@@ -280,6 +294,10 @@ export function AdminDashboard() {
   const [internSearchFilter, setInternSearchFilter] = useState("");
   const [assignedCompanies, setAssignedCompanies] = useState([]);
   const [allCompanies, setAllCompanies] = useState([]);
+
+  // New filter states for customer records
+  const [internFilterForCustomers, setInternFilterForCustomers] =
+    useState("all");
 
   // State for inline editing dashboard counts
   const [editingDashboard, setEditingDashboard] = useState({});
@@ -342,6 +360,8 @@ export function AdminDashboard() {
     company: "",
     phone: "",
     industry_domain: "",
+    primary_use_case: "",
+    account_type: "",
   });
   const [editedDemoAccount, setEditedDemoAccount] = useState({
     first_name: "",
@@ -425,6 +445,22 @@ export function AdminDashboard() {
     // Industry filter
     if (industryFilter !== "all" && customer.industry_domain !== industryFilter)
       return false;
+
+    // Intern assignment filter
+    if (internAssignmentFilter !== "all") {
+      const hasAssignedIntern =
+        customer.assigned_intern_id || customer.assigned_intern_name;
+      if (internAssignmentFilter === "assigned" && !hasAssignedIntern)
+        return false;
+      if (internAssignmentFilter === "unassigned" && hasAssignedIntern)
+        return false;
+    }
+
+    // Specific intern filter
+    if (internFilterForCustomers !== "all") {
+      const customerInternId = customer.assigned_intern_id?.toString();
+      if (customerInternId !== internFilterForCustomers) return false;
+    }
 
     // Date range filter
     if (dateRangeFilter.start || dateRangeFilter.end) {
@@ -577,12 +613,53 @@ export function AdminDashboard() {
           integrations: [],
         });
         setIsAddInternDialogOpen(false);
+        setError(null); // Clear any previous errors
       } else {
         setError("Failed to create intern: " + response.data.message);
       }
     } catch (err) {
-      setError("Error creating intern: " + err.message);
+      const errorMessage = err.response?.data?.message || err.message;
+      setError("Error creating intern: " + errorMessage);
       console.error("Error creating intern:", err);
+    }
+  };
+
+  // Add demo account manually
+  const handleAddDemoAccount = async () => {
+    try {
+      const demoData = {
+        firstName: newDemoAccount.firstName,
+        lastName: newDemoAccount.lastName,
+        email: newDemoAccount.email,
+        company: newDemoAccount.company,
+        phone: newDemoAccount.phone,
+        industryDomain: newDemoAccount.industryDomain,
+        selectedIntegrations: newDemoAccount.selectedIntegrations,
+        accountType: "demo",
+      };
+
+      const response = await apiService.auth.register(demoData);
+
+      if (response.data.success) {
+        loadData();
+        setNewDemoAccount({
+          firstName: "",
+          lastName: "",
+          email: "",
+          company: "",
+          phone: "",
+          industryDomain: "",
+          selectedIntegrations: [],
+        });
+        setIsAddDemoAccountDialogOpen(false);
+        setError(null); // Clear any previous errors
+      } else {
+        setError("Failed to create demo account: " + response.data.message);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message;
+      setError("Error creating demo account: " + errorMessage);
+      console.error("Error creating demo account:", err);
     }
   };
 
@@ -615,12 +692,15 @@ export function AdminDashboard() {
           accountType: "ld",
         });
         setIsAddCustomerDialogOpen(false);
+        setError(null); // Clear any previous errors
       } else {
         setError("Failed to create customer: " + response.data.message);
       }
     } catch (err) {
-      setError("Error creating customer: " + err.message);
+      const errorMessage = err.response?.data?.message || err.message;
+      setError("Error creating customer: " + errorMessage);
       console.error("Error creating customer:", err);
+      // Don't close the dialog on error - let user see the error message
     }
   };
 
@@ -804,6 +884,8 @@ export function AdminDashboard() {
       company: customer.company,
       phone: customer.phone,
       industry_domain: customer.industry_domain,
+      primary_use_case: customer.primary_use_case || "",
+      account_type: customer.account_type || "ld",
     });
     setIsEditCustomerDialogOpen(true);
   };
@@ -833,6 +915,8 @@ export function AdminDashboard() {
           company: "",
           phone: "",
           industry_domain: "",
+          primary_use_case: "",
+          account_type: "",
         });
         loadData(); // Reload to get fresh data
       } else {
@@ -1229,6 +1313,8 @@ export function AdminDashboard() {
     setDashboardsDeliveredFilter("all");
     setUseCaseFilter("all");
     setIndustryFilter("all");
+    setInternAssignmentFilter("all");
+    setInternFilterForCustomers("all");
     setDateRangeFilter({ start: "", end: "" });
   };
 
@@ -1301,6 +1387,20 @@ export function AdminDashboard() {
     }));
   };
 
+  // New dialog states for viewing integrations and customers
+  const [
+    isViewInternIntegrationsDialogOpen,
+    setIsViewInternIntegrationsDialogOpen,
+  ] = useState(false);
+  const [isViewInternCustomersDialogOpen, setIsViewInternCustomersDialogOpen] =
+    useState(false);
+  const [
+    isViewDemoIntegrationsDialogOpen,
+    setIsViewDemoIntegrationsDialogOpen,
+  ] = useState(false);
+  const [selectedInternForView, setSelectedInternForView] = useState(null);
+  const [selectedDemoForView, setSelectedDemoForView] = useState(null);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Mobile Header */}
@@ -1362,6 +1462,22 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsAddDemoAccountDialogOpen(true)}
+                  className="py-3 px-4 hover:bg-purple-50 focus:bg-purple-50 cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Shield className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        Add Demo Account
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Create demo account
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1387,399 +1503,64 @@ export function AdminDashboard() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
               <NotificationDropdown recipientType="admin" />
-              <Dialog
-                open={isAddInternDialogOpen}
-                onOpenChange={setIsAddInternDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="bg-white/80 hover:bg-white border-gray-300 shadow-sm w-full sm:w-auto"
-                  >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 w-full sm:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Intern
+                    Add New
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white/95 backdrop-blur-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold text-gray-900">
-                      Add New Intern
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600">
-                      Create a new intern account with credentials
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="internName"
-                        className="text-gray-700 font-medium"
-                      >
-                        Name
-                      </Label>
-                      <Input
-                        id="internName"
-                        value={newIntern.name}
-                        onChange={(e) =>
-                          setNewIntern((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g., John Doe"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="internEmail"
-                        className="text-gray-700 font-medium"
-                      >
-                        Email
-                      </Label>
-                      <Input
-                        id="internEmail"
-                        type="email"
-                        value={newIntern.email}
-                        onChange={(e) =>
-                          setNewIntern((prev) => ({
-                            ...prev,
-                            email: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g., john.doe@company.com"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="internPhone"
-                          className="text-gray-700 font-medium"
-                        >
-                          Phone Number
-                        </Label>
-                        <Input
-                          id="internPhone"
-                          value={newIntern.phone}
-                          onChange={(e) =>
-                            setNewIntern((prev) => ({
-                              ...prev,
-                              phone: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g., +1-555-0123"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="internWhatsapp"
-                          className="text-gray-700 font-medium"
-                        >
-                          WhatsApp Number
-                        </Label>
-                        <Input
-                          id="internWhatsapp"
-                          value={newIntern.whatsapp}
-                          onChange={(e) =>
-                            setNewIntern((prev) => ({
-                              ...prev,
-                              whatsapp: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g., +1-555-0123"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="internSpecialization"
-                        className="text-gray-700 font-medium"
-                      >
-                        Specialization
-                      </Label>
-                      <Select
-                        value={newIntern.specialization}
-                        onValueChange={(value) =>
-                          setNewIntern((prev) => ({
-                            ...prev,
-                            specialization: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="L&D">L&D</SelectItem>
-                          <SelectItem value="Demo">Demo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-gray-700 font-medium">
-                        Integrations
-                      </Label>
-                      <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                          {availableIntegrations.map((integration) => (
-                            <label
-                              key={integration}
-                              className="flex items-center space-x-2 text-sm"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={newIntern.integrations.includes(
-                                  integration
-                                )}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setNewIntern((prev) => ({
-                                      ...prev,
-                                      integrations: [
-                                        ...prev.integrations,
-                                        integration,
-                                      ],
-                                    }));
-                                  } else {
-                                    setNewIntern((prev) => ({
-                                      ...prev,
-                                      integrations: prev.integrations.filter(
-                                        (i) => i !== integration
-                                      ),
-                                    }));
-                                  }
-                                }}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span>{integration}</span>
-                            </label>
-                          ))}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onClick={() => setIsAddInternDialogOpen(true)}
+                    className="py-3 px-4 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Users className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          Add Intern
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Create new intern account
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Select the integrations this intern can work with
-                      </p>
                     </div>
-                    <Button
-                      onClick={handleAddIntern}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      Add Intern
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog
-                open={isAddCustomerDialogOpen}
-                onOpenChange={setIsAddCustomerDialogOpen}
-              >
-                <DialogContent className="bg-white/95 backdrop-blur-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold text-gray-900">
-                      Add New Customer Manually
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600">
-                      Create a customer record manually
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="customerFirstName"
-                          className="text-gray-700 font-medium"
-                        >
-                          First Name
-                        </Label>
-                        <Input
-                          id="customerFirstName"
-                          value={newCustomer.firstName}
-                          onChange={(e) =>
-                            setNewCustomer((prev) => ({
-                              ...prev,
-                              firstName: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g., John"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="customerLastName"
-                          className="text-gray-700 font-medium"
-                        >
-                          Last Name
-                        </Label>
-                        <Input
-                          id="customerLastName"
-                          value={newCustomer.lastName}
-                          onChange={(e) =>
-                            setNewCustomer((prev) => ({
-                              ...prev,
-                              lastName: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g., Doe"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setIsAddCustomerDialogOpen(true)}
+                    className="py-3 px-4 hover:bg-emerald-50 focus:bg-emerald-50 cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Database className="h-4 w-4 text-emerald-600" />
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          Add Customer
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Create customer record
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="customerEmail"
-                        className="text-gray-700 font-medium"
-                      >
-                        Email
-                      </Label>
-                      <Input
-                        id="customerEmail"
-                        type="email"
-                        value={newCustomer.email}
-                        onChange={(e) =>
-                          setNewCustomer((prev) => ({
-                            ...prev,
-                            email: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g., john.doe@company.com"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setIsAddDemoAccountDialogOpen(true)}
+                    className="py-3 px-4 hover:bg-purple-50 focus:bg-purple-50 cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          Add Demo Account
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Create demo account
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="customerCompany"
-                        className="text-gray-700 font-medium"
-                      >
-                        Company
-                      </Label>
-                      <Input
-                        id="customerCompany"
-                        value={newCustomer.company}
-                        onChange={(e) =>
-                          setNewCustomer((prev) => ({
-                            ...prev,
-                            company: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g., Acme Corp"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="customerPhone"
-                        className="text-gray-700 font-medium"
-                      >
-                        Phone
-                      </Label>
-                      <Input
-                        id="customerPhone"
-                        value={newCustomer.phone}
-                        onChange={(e) =>
-                          setNewCustomer((prev) => ({
-                            ...prev,
-                            phone: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g., +1-555-0123"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="customerIndustry"
-                        className="text-gray-700 font-medium"
-                      >
-                        Industry Domain
-                      </Label>
-                      <Select
-                        value={newCustomer.industryDomain}
-                        onValueChange={(value) =>
-                          setNewCustomer((prev) => ({
-                            ...prev,
-                            industryDomain: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select industry" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {industryDomains.map((industry) => (
-                            <SelectItem key={industry} value={industry}>
-                              {industry}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="customerUseCase"
-                        className="text-gray-700 font-medium"
-                      >
-                        Primary Use Case
-                      </Label>
-                      <Select
-                        value={newCustomer.primaryUseCase}
-                        onValueChange={(value) =>
-                          setNewCustomer((prev) => ({
-                            ...prev,
-                            primaryUseCase: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select use case" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {smartcardUseCases.map((useCase) => (
-                            <SelectItem key={useCase} value={useCase}>
-                              {useCase}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="customerAccountType"
-                        className="text-gray-700 font-medium"
-                      >
-                        Account Type
-                      </Label>
-                      <Select
-                        value={newCustomer.accountType}
-                        onValueChange={(value) =>
-                          setNewCustomer((prev) => ({
-                            ...prev,
-                            accountType: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ld">L&D Management</SelectItem>
-                          <SelectItem value="demo">Demo Account</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button
-                      onClick={handleAddCustomer}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      Add Customer
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -2079,6 +1860,8 @@ export function AdminDashboard() {
                           dashboardsDeliveredFilter,
                           useCaseFilter,
                           industryFilter,
+                          internAssignmentFilter,
+                          internFilterForCustomers,
                           searchFilter,
                         }).filter((v) => v && v !== "all").length
                       }
@@ -2216,6 +1999,49 @@ export function AdminDashboard() {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-gray-700 font-medium">
+                            Intern Assignment
+                          </Label>
+                          <Select
+                            value={internAssignmentFilter}
+                            onValueChange={setInternAssignmentFilter}
+                          >
+                            <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Customers</SelectItem>
+                              <SelectItem value="assigned">
+                                Has Assigned Intern
+                              </SelectItem>
+                              <SelectItem value="unassigned">
+                                No Assigned Intern
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700 font-medium">
+                            Assigned Intern
+                          </Label>
+                          <Select
+                            value={internFilterForCustomers}
+                            onValueChange={setInternFilterForCustomers}
+                          >
+                            <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Interns</SelectItem>
+                              {interns.map((intern) => (
+                                <SelectItem key={intern.id} value={intern.id}>
+                                  {intern.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700 font-medium">
                             Date Range Start
                           </Label>
                           <Input
@@ -2279,7 +2105,7 @@ export function AdminDashboard() {
                   {/* Desktop Filters - Two Lines */}
                   <div className="hidden md:block bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200/50 shadow-sm p-6">
                     {/* First Line */}
-                    <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="grid grid-cols-5 gap-4 mb-4">
                       <div className="space-y-2">
                         <Label className="text-gray-700 font-medium">
                           Status
@@ -2299,6 +2125,28 @@ export function AdminDashboard() {
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="on-hold">On Hold</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-gray-700 font-medium">
+                          Intern Assignment
+                        </Label>
+                        <Select
+                          value={internAssignmentFilter}
+                          onValueChange={setInternAssignmentFilter}
+                        >
+                          <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Customers</SelectItem>
+                            <SelectItem value="assigned">
+                              Has Assigned Intern
+                            </SelectItem>
+                            <SelectItem value="unassigned">
+                              No Assigned Intern
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2369,7 +2217,7 @@ export function AdminDashboard() {
                     </div>
 
                     {/* Second Line */}
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-6 gap-4">
                       <div className="space-y-2">
                         <Label className="text-gray-700 font-medium">
                           Industry
@@ -2425,10 +2273,31 @@ export function AdminDashboard() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-gray-700 font-medium">
+                          Assigned Intern
+                        </Label>
+                        <Select
+                          value={internFilterForCustomers}
+                          onValueChange={setInternFilterForCustomers}
+                        >
+                          <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Interns</SelectItem>
+                            {interns.map((intern) => (
+                              <SelectItem key={intern.id} value={intern.id}>
+                                {intern.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-gray-700 font-medium">
                           Search
                         </Label>
                         <Input
-                          placeholder="Search customers..."
+                          placeholder="Search by name, email, phone, or company..."
                           value={searchFilter}
                           onChange={(e) => setSearchFilter(e.target.value)}
                           className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -3370,26 +3239,41 @@ export function AdminDashboard() {
                             <div className="max-w-48">
                               {intern.integrations &&
                               intern.integrations.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {intern.integrations
-                                    .slice(0, 3)
-                                    .map((integration) => (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex flex-wrap gap-1 flex-1">
+                                    {intern.integrations
+                                      .slice(0, 3)
+                                      .map((integration) => (
+                                        <Badge
+                                          key={integration}
+                                          variant="outline"
+                                          className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
+                                        >
+                                          {integration}
+                                        </Badge>
+                                      ))}
+                                    {intern.integrations.length > 3 && (
                                       <Badge
-                                        key={integration}
                                         variant="outline"
-                                        className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
+                                        className="text-xs bg-gray-50 text-gray-600 border-gray-200"
                                       >
-                                        {integration}
+                                        +{intern.integrations.length - 3}
                                       </Badge>
-                                    ))}
-                                  {intern.integrations.length > 3 && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs bg-gray-50 text-gray-600 border-gray-200"
-                                    >
-                                      +{intern.integrations.length - 3}
-                                    </Badge>
-                                  )}
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedInternForView(intern);
+                                      setIsViewInternIntegrationsDialogOpen(
+                                        true
+                                      );
+                                    }}
+                                    className="hover:bg-blue-50 p-1"
+                                  >
+                                    <Eye className="h-3 w-3 text-blue-600" />
+                                  </Button>
                                 </div>
                               ) : (
                                 <span className="text-sm text-gray-400">
@@ -3402,26 +3286,39 @@ export function AdminDashboard() {
                             <div className="max-w-48">
                               {intern.customer_companies &&
                               intern.customer_companies.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {intern.customer_companies
-                                    .slice(0, 2)
-                                    .map((company) => (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex flex-wrap gap-1 flex-1">
+                                    {intern.customer_companies
+                                      .slice(0, 2)
+                                      .map((company) => (
+                                        <Badge
+                                          key={company}
+                                          variant="outline"
+                                          className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        >
+                                          {company}
+                                        </Badge>
+                                      ))}
+                                    {intern.customer_companies.length > 2 && (
                                       <Badge
-                                        key={company}
                                         variant="outline"
-                                        className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        className="text-xs bg-gray-50 text-gray-600 border-gray-200"
                                       >
-                                        {company}
+                                        +{intern.customer_companies.length - 2}
                                       </Badge>
-                                    ))}
-                                  {intern.customer_companies.length > 2 && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs bg-gray-50 text-gray-600 border-gray-200"
-                                    >
-                                      +{intern.customer_companies.length - 2}
-                                    </Badge>
-                                  )}
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedInternForView(intern);
+                                      setIsViewInternCustomersDialogOpen(true);
+                                    }}
+                                    className="hover:bg-blue-50 p-1"
+                                  >
+                                    <Eye className="h-3 w-3 text-blue-600" />
+                                  </Button>
                                 </div>
                               ) : (
                                 <span className="text-sm text-gray-400">
@@ -3897,10 +3794,16 @@ export function AdminDashboard() {
                           Industry
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4">
-                          Credentials
+                          Username
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4">
+                          Password
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
                           Status
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
+                          Integrations
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden md:table-cell">
                           Assigned Intern
@@ -4063,6 +3966,56 @@ export function AdminDashboard() {
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-48">
+                                  {demo.selected_integrations &&
+                                  demo.selected_integrations.length > 0 ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex flex-wrap gap-1 flex-1">
+                                        {demo.selected_integrations
+                                          .slice(0, 3)
+                                          .map((integration) => (
+                                            <Badge
+                                              key={integration}
+                                              variant="outline"
+                                              className="text-xs bg-purple-50 text-purple-700 border-purple-200"
+                                            >
+                                              {integration}
+                                            </Badge>
+                                          ))}
+                                        {demo.selected_integrations.length >
+                                          3 && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs bg-gray-50 text-gray-600 border-gray-200"
+                                          >
+                                            +
+                                            {demo.selected_integrations.length -
+                                              3}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedDemoForView(demo);
+                                          setIsViewDemoIntegrationsDialogOpen(
+                                            true
+                                          );
+                                        }}
+                                        className="hover:bg-purple-50 p-1"
+                                      >
+                                        <Eye className="h-3 w-3 text-purple-600" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-gray-400">
+                                      No integrations
+                                    </span>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-gray-600">
                                 <Select
@@ -4418,6 +4371,66 @@ export function AdminDashboard() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Customer Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input
+                    value={selectedCustomer?.first_name || ""}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input
+                    value={selectedCustomer?.last_name || ""}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  value={selectedCustomer?.email || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Company</Label>
+                <Input
+                  value={selectedCustomer?.company || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input
+                  value={selectedCustomer?.phone || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Industry Domain</Label>
+                <Input
+                  value={selectedCustomer?.industry_domain || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Primary Use Case</Label>
+                <Input
+                  value={selectedCustomer?.primary_use_case || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+
               {/* Dashboard Tracking */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -4830,17 +4843,24 @@ export function AdminDashboard() {
           open={isEditInternDialogOpen}
           onOpenChange={setIsEditInternDialogOpen}
         >
-          <DialogContent>
+          <DialogContent className="bg-white/95 backdrop-blur-sm">
             <DialogHeader>
-              <DialogTitle>Edit Intern Details</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Edit Intern Details
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
                 Update intern information and specialization
               </DialogDescription>
             </DialogHeader>
             {selectedIntern && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="editInternName">Name</Label>
+                  <Label
+                    htmlFor="editInternName"
+                    className="text-gray-700 font-medium"
+                  >
+                    Name
+                  </Label>
                   <Input
                     id="editInternName"
                     value={selectedIntern.name}
@@ -4850,10 +4870,17 @@ export function AdminDashboard() {
                         name: e.target.value,
                       }))
                     }
+                    placeholder="e.g., John Doe"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="editInternEmail">Email</Label>
+                  <Label
+                    htmlFor="editInternEmail"
+                    className="text-gray-700 font-medium"
+                  >
+                    Email
+                  </Label>
                   <Input
                     id="editInternEmail"
                     type="email"
@@ -4864,11 +4891,18 @@ export function AdminDashboard() {
                         email: e.target.value,
                       }))
                     }
+                    placeholder="e.g., john.doe@company.com"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="editInternPhone">Phone</Label>
+                    <Label
+                      htmlFor="editInternPhone"
+                      className="text-gray-700 font-medium"
+                    >
+                      Phone Number
+                    </Label>
                     <Input
                       id="editInternPhone"
                       value={selectedIntern.phone || ""}
@@ -4878,10 +4912,17 @@ export function AdminDashboard() {
                           phone: e.target.value,
                         }))
                       }
+                      placeholder="e.g., +1-555-0123"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="editInternWhatsapp">WhatsApp</Label>
+                    <Label
+                      htmlFor="editInternWhatsapp"
+                      className="text-gray-700 font-medium"
+                    >
+                      WhatsApp Number
+                    </Label>
                     <Input
                       id="editInternWhatsapp"
                       value={selectedIntern.whatsapp || ""}
@@ -4891,11 +4932,16 @@ export function AdminDashboard() {
                           whatsapp: e.target.value,
                         }))
                       }
+                      placeholder="e.g., +1-555-0123"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="editInternSpecialization">
+                  <Label
+                    htmlFor="editInternSpecialization"
+                    className="text-gray-700 font-medium"
+                  >
                     Specialization
                   </Label>
                   <Select
@@ -4907,7 +4953,7 @@ export function AdminDashboard() {
                       }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -4916,8 +4962,60 @@ export function AdminDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">
+                    Integrations
+                  </Label>
+                  <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableIntegrations.map((integration) => (
+                        <label
+                          key={integration}
+                          className="flex items-center space-x-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={
+                              selectedIntern.integrations?.includes(
+                                integration
+                              ) || false
+                            }
+                            onChange={(e) => {
+                              const currentIntegrations =
+                                selectedIntern.integrations || [];
+                              if (e.target.checked) {
+                                setSelectedIntern((prev) => ({
+                                  ...prev,
+                                  integrations: [
+                                    ...currentIntegrations,
+                                    integration,
+                                  ],
+                                }));
+                              } else {
+                                setSelectedIntern((prev) => ({
+                                  ...prev,
+                                  integrations: currentIntegrations.filter(
+                                    (i) => i !== integration
+                                  ),
+                                }));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>{integration}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Select the integrations this intern can work with
+                  </p>
+                </div>
                 <div className="flex gap-2">
-                  <Button className="flex-1" onClick={handleUpdateIntern}>
+                  <Button
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    onClick={handleUpdateIntern}
+                  >
                     Update Intern
                   </Button>
                   <Button
@@ -5232,6 +5330,59 @@ export function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="editPrimaryUseCase"
+                  className="text-gray-700 font-medium"
+                >
+                  Primary Use Case
+                </Label>
+                <Select
+                  value={editedCustomer.primary_use_case}
+                  onValueChange={(value) =>
+                    setEditedCustomer((prev) => ({
+                      ...prev,
+                      primary_use_case: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {smartcardUseCases.map((useCase) => (
+                      <SelectItem key={useCase} value={useCase}>
+                        {useCase}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="editAccountType"
+                  className="text-gray-700 font-medium"
+                >
+                  Account Type
+                </Label>
+                <Select
+                  value={editedCustomer.account_type}
+                  onValueChange={(value) =>
+                    setEditedCustomer((prev) => ({
+                      ...prev,
+                      account_type: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ld">L&D Management</SelectItem>
+                    <SelectItem value="demo">Demo Account</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-3">
                 <Button
                   onClick={handleSaveCustomerEdit}
@@ -5464,6 +5615,57 @@ export function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label className="text-gray-700 font-medium">
+                  Integrations
+                </Label>
+                <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2">
+                    {availableIntegrations.map((integration) => (
+                      <label
+                        key={integration}
+                        className="flex items-center space-x-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            editedDemoAccount.selected_integrations?.includes(
+                              integration
+                            ) || false
+                          }
+                          onChange={(e) => {
+                            const currentIntegrations =
+                              editedDemoAccount.selected_integrations || [];
+                            if (e.target.checked) {
+                              setEditedDemoAccount((prev) => ({
+                                ...prev,
+                                selected_integrations: [
+                                  ...currentIntegrations,
+                                  integration,
+                                ],
+                              }));
+                            } else {
+                              setEditedDemoAccount((prev) => ({
+                                ...prev,
+                                selected_integrations:
+                                  currentIntegrations.filter(
+                                    (i) => i !== integration
+                                  ),
+                              }));
+                            }
+                          }}
+                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>{integration}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Select the integrations this demo account should have access
+                  to
+                </p>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <Button
@@ -5639,7 +5841,725 @@ export function AdminDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Add Demo Account Dialog */}
+        <Dialog
+          open={isAddDemoAccountDialogOpen}
+          onOpenChange={setIsAddDemoAccountDialogOpen}
+        >
+          <DialogContent className="bg-white/95 backdrop-blur-sm max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Add New Demo Account
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Create a new demo account with credentials
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="demoFirstName"
+                    className="text-gray-700 font-medium"
+                  >
+                    First Name
+                  </Label>
+                  <Input
+                    id="demoFirstName"
+                    value={newDemoAccount.firstName}
+                    onChange={(e) =>
+                      setNewDemoAccount((prev) => ({
+                        ...prev,
+                        firstName: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g., John"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="demoLastName"
+                    className="text-gray-700 font-medium"
+                  >
+                    Last Name
+                  </Label>
+                  <Input
+                    id="demoLastName"
+                    value={newDemoAccount.lastName}
+                    onChange={(e) =>
+                      setNewDemoAccount((prev) => ({
+                        ...prev,
+                        lastName: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Doe"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="demoEmail"
+                  className="text-gray-700 font-medium"
+                >
+                  Email
+                </Label>
+                <Input
+                  id="demoEmail"
+                  type="email"
+                  value={newDemoAccount.email}
+                  onChange={(e) =>
+                    setNewDemoAccount((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., john.doe@company.com"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="demoCompany"
+                  className="text-gray-700 font-medium"
+                >
+                  Company
+                </Label>
+                <Input
+                  id="demoCompany"
+                  value={newDemoAccount.company}
+                  onChange={(e) =>
+                    setNewDemoAccount((prev) => ({
+                      ...prev,
+                      company: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., Acme Corp"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="demoPhone"
+                  className="text-gray-700 font-medium"
+                >
+                  Phone
+                </Label>
+                <Input
+                  id="demoPhone"
+                  value={newDemoAccount.phone}
+                  onChange={(e) =>
+                    setNewDemoAccount((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., +1-555-0123"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="demoIndustry"
+                  className="text-gray-700 font-medium"
+                >
+                  Industry Domain
+                </Label>
+                <Select
+                  value={newDemoAccount.industryDomain}
+                  onValueChange={(value) =>
+                    setNewDemoAccount((prev) => ({
+                      ...prev,
+                      industryDomain: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {industryDomains.map((industry) => (
+                      <SelectItem key={industry} value={industry}>
+                        {industry}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-700 font-medium">
+                  Integrations
+                </Label>
+                <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2">
+                    {availableIntegrations.map((integration) => (
+                      <label
+                        key={integration}
+                        className="flex items-center space-x-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={newDemoAccount.selectedIntegrations.includes(
+                            integration
+                          )}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewDemoAccount((prev) => ({
+                                ...prev,
+                                selectedIntegrations: [
+                                  ...prev.selectedIntegrations,
+                                  integration,
+                                ],
+                              }));
+                            } else {
+                              setNewDemoAccount((prev) => ({
+                                ...prev,
+                                selectedIntegrations:
+                                  prev.selectedIntegrations.filter(
+                                    (i) => i !== integration
+                                  ),
+                              }));
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{integration}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Select the integrations this demo account should have access
+                  to
+                </p>
+              </div>
+              <Button
+                onClick={handleAddDemoAccount}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              >
+                Add Demo Account
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {/* Add Intern Dialog */}
+      <Dialog
+        open={isAddInternDialogOpen}
+        onOpenChange={setIsAddInternDialogOpen}
+      >
+        <DialogContent className="bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Add New Intern
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Create a new intern account with credentials
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="internName" className="text-gray-700 font-medium">
+                Name
+              </Label>
+              <Input
+                id="internName"
+                value={newIntern.name}
+                onChange={(e) =>
+                  setNewIntern((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
+                placeholder="e.g., John Doe"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="internEmail"
+                className="text-gray-700 font-medium"
+              >
+                Email
+              </Label>
+              <Input
+                id="internEmail"
+                type="email"
+                value={newIntern.email}
+                onChange={(e) =>
+                  setNewIntern((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                placeholder="e.g., john.doe@company.com"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="internPhone"
+                  className="text-gray-700 font-medium"
+                >
+                  Phone Number
+                </Label>
+                <Input
+                  id="internPhone"
+                  value={newIntern.phone}
+                  onChange={(e) =>
+                    setNewIntern((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., +1-555-0123"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="internWhatsapp"
+                  className="text-gray-700 font-medium"
+                >
+                  WhatsApp Number
+                </Label>
+                <Input
+                  id="internWhatsapp"
+                  value={newIntern.whatsapp}
+                  onChange={(e) =>
+                    setNewIntern((prev) => ({
+                      ...prev,
+                      whatsapp: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., +1-555-0123"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="internSpecialization"
+                className="text-gray-700 font-medium"
+              >
+                Specialization
+              </Label>
+              <Select
+                value={newIntern.specialization}
+                onValueChange={(value) =>
+                  setNewIntern((prev) => ({
+                    ...prev,
+                    specialization: value,
+                  }))
+                }
+              >
+                <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="L&D">L&D</SelectItem>
+                  <SelectItem value="Demo">Demo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Integrations</Label>
+              <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-2">
+                  {availableIntegrations.map((integration) => (
+                    <label
+                      key={integration}
+                      className="flex items-center space-x-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={newIntern.integrations.includes(integration)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewIntern((prev) => ({
+                              ...prev,
+                              integrations: [...prev.integrations, integration],
+                            }));
+                          } else {
+                            setNewIntern((prev) => ({
+                              ...prev,
+                              integrations: prev.integrations.filter(
+                                (i) => i !== integration
+                              ),
+                            }));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{integration}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Select the integrations this intern can work with
+              </p>
+            </div>
+            <Button
+              onClick={handleAddIntern}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              Add Intern
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Customer Dialog */}
+      <Dialog
+        open={isAddCustomerDialogOpen}
+        onOpenChange={setIsAddCustomerDialogOpen}
+      >
+        <DialogContent className="bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Add New Customer Manually
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Create a customer record manually
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="customerFirstName"
+                  className="text-gray-700 font-medium"
+                >
+                  First Name
+                </Label>
+                <Input
+                  id="customerFirstName"
+                  value={newCustomer.firstName}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      firstName: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., John"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="customerLastName"
+                  className="text-gray-700 font-medium"
+                >
+                  Last Name
+                </Label>
+                <Input
+                  id="customerLastName"
+                  value={newCustomer.lastName}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      lastName: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., Doe"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerEmail"
+                className="text-gray-700 font-medium"
+              >
+                Email
+              </Label>
+              <Input
+                id="customerEmail"
+                type="email"
+                value={newCustomer.email}
+                onChange={(e) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                placeholder="e.g., john.doe@company.com"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerCompany"
+                className="text-gray-700 font-medium"
+              >
+                Company
+              </Label>
+              <Input
+                id="customerCompany"
+                value={newCustomer.company}
+                onChange={(e) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    company: e.target.value,
+                  }))
+                }
+                placeholder="e.g., Acme Corp"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerPhone"
+                className="text-gray-700 font-medium"
+              >
+                Phone
+              </Label>
+              <Input
+                id="customerPhone"
+                value={newCustomer.phone}
+                onChange={(e) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }))
+                }
+                placeholder="e.g., +1-555-0123"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerIndustry"
+                className="text-gray-700 font-medium"
+              >
+                Industry Domain
+              </Label>
+              <Select
+                value={newCustomer.industryDomain}
+                onValueChange={(value) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    industryDomain: value,
+                  }))
+                }
+              >
+                <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectValue placeholder="Select industry" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {industryDomains.map((industry) => (
+                    <SelectItem key={industry} value={industry}>
+                      {industry}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerUseCase"
+                className="text-gray-700 font-medium"
+              >
+                Primary Use Case
+              </Label>
+              <Select
+                value={newCustomer.primaryUseCase}
+                onValueChange={(value) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    primaryUseCase: value,
+                  }))
+                }
+              >
+                <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectValue placeholder="Select use case" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {smartcardUseCases.map((useCase) => (
+                    <SelectItem key={useCase} value={useCase}>
+                      {useCase}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerAccountType"
+                className="text-gray-700 font-medium"
+              >
+                Account Type
+              </Label>
+              <Select
+                value={newCustomer.accountType}
+                onValueChange={(value) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    accountType: value,
+                  }))
+                }
+              >
+                <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ld">L&D Management</SelectItem>
+                  <SelectItem value="demo">Demo Account</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="h-4 w-4 text-red-400">
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <Button
+              onClick={handleAddCustomer}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              Add Customer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Intern Integrations Dialog */}
+      <Dialog
+        open={isViewInternIntegrationsDialogOpen}
+        onOpenChange={setIsViewInternIntegrationsDialogOpen}
+      >
+        <DialogContent className="bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              {selectedInternForView?.name} - Integrations
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              All integrations assigned to this intern
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedInternForView?.integrations &&
+            selectedInternForView.integrations.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {selectedInternForView.integrations.map((integration) => (
+                  <Badge
+                    key={integration}
+                    variant="outline"
+                    className="text-sm bg-indigo-50 text-indigo-700 border-indigo-200 p-2"
+                  >
+                    {integration}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500">No integrations assigned</div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Intern Customers Dialog */}
+      <Dialog
+        open={isViewInternCustomersDialogOpen}
+        onOpenChange={setIsViewInternCustomersDialogOpen}
+      >
+        <DialogContent className="bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              {selectedInternForView?.name} - Assigned Customers
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              All customers assigned to this intern
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedInternForView?.customer_companies &&
+            selectedInternForView.customer_companies.length > 0 ? (
+              <div className="space-y-2">
+                {selectedInternForView.customer_companies.map((company) => (
+                  <div
+                    key={company}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-900">
+                        {company}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500">No customers assigned</div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Demo Integrations Dialog */}
+      <Dialog
+        open={isViewDemoIntegrationsDialogOpen}
+        onOpenChange={setIsViewDemoIntegrationsDialogOpen}
+      >
+        <DialogContent className="bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              {selectedDemoForView?.first_name} {selectedDemoForView?.last_name}{" "}
+              - Integrations
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              All integrations selected for this demo account
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedDemoForView?.selected_integrations &&
+            selectedDemoForView.selected_integrations.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {selectedDemoForView.selected_integrations.map(
+                  (integration) => (
+                    <Badge
+                      key={integration}
+                      variant="outline"
+                      className="text-sm bg-purple-50 text-purple-700 border-purple-200 p-2"
+                    >
+                      {integration}
+                    </Badge>
+                  )
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500">No integrations selected</div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

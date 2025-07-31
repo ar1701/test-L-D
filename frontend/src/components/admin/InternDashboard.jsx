@@ -95,6 +95,26 @@ const industryDomains = [
   "Non-Profit",
 ];
 
+// Available integrations (same as admin dashboard)
+const availableIntegrations = [
+  "Salesforce",
+  "Databricks",
+  "MySQL",
+  "PostgreSQL",
+  "MongoDB",
+  "AWS S3",
+  "Azure",
+  "Google Cloud",
+  "Tableau",
+  "Power BI",
+  "Slack",
+  "Microsoft Teams",
+  "Jira",
+  "Confluence",
+  "HubSpot",
+  "Zendesk",
+];
+
 // Use cases for filtering
 const smartcardUseCases = [
   "Training progress tracking and analytics",
@@ -144,6 +164,7 @@ export function InternDashboard({ user, onLogout }) {
   // Demo Account Filter states
   const [demoStatusFilter, setDemoStatusFilter] = useState("all");
   const [demoIndustryFilter, setDemoIndustryFilter] = useState("all");
+  const [demoIntegrationFilter, setDemoIntegrationFilter] = useState("all");
   const [demoSearchFilter, setDemoSearchFilter] = useState("");
   const [demoDateRangeFilter, setDemoDateRangeFilter] = useState({
     start: "",
@@ -154,6 +175,21 @@ export function InternDashboard({ user, onLogout }) {
   // Password visibility and copy feedback state
   const [visiblePasswords, setVisiblePasswords] = useState({}); // { [demoId]: true/false }
   const [copied, setCopied] = useState({}); // { [demoId-field]: true/false }
+
+  // Dialog states for viewing integrations
+  const [
+    isViewDemoIntegrationsDialogOpen,
+    setIsViewDemoIntegrationsDialogOpen,
+  ] = useState(false);
+  const [selectedDemoForView, setSelectedDemoForView] = useState(null);
+
+  // Dialog states for viewing customer feedback
+  const [
+    isViewCustomerFeedbackDialogOpen,
+    setIsViewCustomerFeedbackDialogOpen,
+  ] = useState(false);
+  const [selectedRequestForFeedback, setSelectedRequestForFeedback] =
+    useState(null);
 
   useEffect(() => {
     loadData();
@@ -342,6 +378,7 @@ export function InternDashboard({ user, onLogout }) {
   const clearDemoFilters = () => {
     setDemoStatusFilter("all");
     setDemoIndustryFilter("all");
+    setDemoIntegrationFilter("all");
     setDemoSearchFilter("");
     setDemoDateRangeFilter({ start: "", end: "" });
   };
@@ -362,6 +399,19 @@ export function InternDashboard({ user, onLogout }) {
       demo.industry_domain !== demoIndustryFilter
     )
       return false;
+
+    // Integration filter
+    if (demoIntegrationFilter !== "all") {
+      if (
+        !demo.selected_integrations ||
+        !Array.isArray(demo.selected_integrations)
+      ) {
+        return false;
+      }
+      if (!demo.selected_integrations.includes(demoIntegrationFilter)) {
+        return false;
+      }
+    }
 
     // Search filter (searches in customer name, company, email, phone)
     if (demoSearchFilter) {
@@ -402,6 +452,25 @@ export function InternDashboard({ user, onLogout }) {
     activeDemoAccounts: demoAccounts.filter(
       (demo) => demo.is_active && new Date(demo.expires_at) > new Date()
     ).length,
+    // New metrics
+    dashboardsPending: requests.filter((r) => r.status !== "completed").length,
+    clientSatisfiedDashboards: requests.filter(
+      (r) => r.status === "completed" && r.customer_satisfaction_score >= 8
+    ).length,
+    pilotDashboards: requests.filter((r) => r.project_type === "pilot").length,
+    pilotDashboardsCompleted: requests.filter(
+      (r) => r.project_type === "pilot" && r.status === "completed"
+    ).length,
+    averageCustomerScore:
+      requests.filter((r) => r.customer_satisfaction_score).length > 0
+        ? Math.round(
+            (requests
+              .filter((r) => r.customer_satisfaction_score)
+              .reduce((sum, r) => sum + r.customer_satisfaction_score, 0) /
+              requests.filter((r) => r.customer_satisfaction_score).length) *
+              10
+          ) / 10
+        : 0,
   };
 
   // Copy to clipboard handler
@@ -542,7 +611,7 @@ export function InternDashboard({ user, onLogout }) {
                 <div className="text-xs text-gray-600">In Progress</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="text-center">
                 <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl mx-auto mb-2">
                   <CheckCircle2 className="h-6 w-6 text-white" />
@@ -553,6 +622,20 @@ export function InternDashboard({ user, onLogout }) {
                 <div className="text-xs text-gray-600">Completed</div>
               </div>
               <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl mx-auto mb-2">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.totalAssigned > 0
+                    ? Math.round((stats.completed / stats.totalAssigned) * 100)
+                    : 0}
+                  %
+                </div>
+                <div className="text-xs text-gray-600">Success Rate</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center">
                 <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl mx-auto mb-2">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
@@ -561,12 +644,61 @@ export function InternDashboard({ user, onLogout }) {
                 </div>
                 <div className="text-xs text-gray-600">Demo Accounts</div>
               </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl mx-auto mb-2">
+                  <CheckCircle2 className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.activeDemoAccounts}
+                </div>
+                <div className="text-xs text-gray-600">Active Demos</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl mx-auto mb-2">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.dashboardsPending}
+                </div>
+                <div className="text-xs text-gray-600">Pending</div>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl mx-auto mb-2">
+                  <CheckCircle2 className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.clientSatisfiedDashboards}
+                </div>
+                <div className="text-xs text-gray-600">Satisfied</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl mx-auto mb-2">
+                  <Target className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.pilotDashboards}
+                </div>
+                <div className="text-xs text-gray-600">Pilot Projects</div>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl mx-auto mb-2">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.averageCustomerScore}/10
+                </div>
+                <div className="text-xs text-gray-600">Avg Score</div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Desktop Stats Cards */}
-        <div className="hidden sm:grid grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6 mb-8">
+        <div className="hidden sm:grid grid-cols-2 lg:grid-cols-8 gap-4 sm:gap-6 mb-8">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200/50 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-900">
@@ -667,6 +799,78 @@ export function InternDashboard({ user, onLogout }) {
                 {stats.activeDemoAccounts}
               </div>
               <p className="text-xs text-teal-700">Currently active</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200/50 shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-900">
+                Dashboards Pending
+              </CardTitle>
+              <div className="p-2 bg-orange-500/10 rounded-lg">
+                <Clock className="h-4 w-4 text-orange-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">
+                {stats.dashboardsPending}
+              </div>
+              <p className="text-xs text-orange-700">Awaiting completion</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200/50 shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-green-900">
+                Client Satisfied
+              </CardTitle>
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">
+                {stats.clientSatisfiedDashboards}
+              </div>
+              <p className="text-xs text-green-700">Score ≥ 8/10</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200/50 shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-purple-900">
+                Pilot Projects
+              </CardTitle>
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <Target className="h-4 w-4 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">
+                {stats.pilotDashboards}
+              </div>
+              <p className="text-xs text-purple-700">Total pilot projects</p>
+            </CardContent>
+          </Card>
+          <Card
+            className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200/50 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => {
+              setSelectedRequestForFeedback(
+                requests.filter((r) => r.customer_satisfaction_score)
+              );
+              setIsViewCustomerFeedbackDialogOpen(true);
+            }}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-pink-900">
+                Avg Customer Score
+              </CardTitle>
+              <div className="p-2 bg-pink-500/10 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-pink-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-pink-900">
+                {stats.averageCustomerScore}/10
+              </div>
+              <p className="text-xs text-pink-700">Average rating</p>
             </CardContent>
           </Card>
         </div>
@@ -1328,7 +1532,7 @@ export function InternDashboard({ user, onLogout }) {
               </div>
 
               {/* Desktop Filters - Always visible on medium+ screens */}
-              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl border border-gray-200/50 shadow-sm">
+              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl border border-gray-200/50 shadow-sm">
                 <div className="space-y-2">
                   <Label className="text-gray-700 font-medium">Status</Label>
                   <Select
@@ -1360,6 +1564,28 @@ export function InternDashboard({ user, onLogout }) {
                       {industryDomains.map((industry) => (
                         <SelectItem key={industry} value={industry}>
                           {industry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">
+                    Integration
+                  </Label>
+                  <Select
+                    value={demoIntegrationFilter}
+                    onValueChange={setDemoIntegrationFilter}
+                  >
+                    <SelectTrigger className="bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="all">All Integrations</SelectItem>
+                      {availableIntegrations.map((integration) => (
+                        <SelectItem key={integration} value={integration}>
+                          {integration}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1459,6 +1685,28 @@ export function InternDashboard({ user, onLogout }) {
                   </div>
 
                   <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">
+                      Integration
+                    </Label>
+                    <Select
+                      value={demoIntegrationFilter}
+                      onValueChange={setDemoIntegrationFilter}
+                    >
+                      <SelectTrigger className="bg-white border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        <SelectItem value="all">All Integrations</SelectItem>
+                        {availableIntegrations.map((integration) => (
+                          <SelectItem key={integration} value={integration}>
+                            {integration}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label className="text-gray-700 font-medium">Search</Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -1532,6 +1780,9 @@ export function InternDashboard({ user, onLogout }) {
                         <TableHead className="font-semibold text-gray-700 min-w-[120px]">
                           Industry
                         </TableHead>
+                        <TableHead className="font-semibold text-gray-700 min-w-[200px]">
+                          Integrations
+                        </TableHead>
                         <TableHead className="font-semibold text-gray-700 min-w-[120px]">
                           Username
                         </TableHead>
@@ -1562,7 +1813,7 @@ export function InternDashboard({ user, onLogout }) {
                       {filteredDemoAccounts.length === 0 ? (
                         <TableRow>
                           <TableCell
-                            colSpan={11}
+                            colSpan={12}
                             className="text-center py-12 text-gray-500"
                           >
                             <div className="flex flex-col items-center">
@@ -1625,6 +1876,56 @@ export function InternDashboard({ user, onLogout }) {
                                 >
                                   {demo.industry_domain}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-48">
+                                  {demo.selected_integrations &&
+                                  demo.selected_integrations.length > 0 ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex flex-wrap gap-1 flex-1">
+                                        {demo.selected_integrations
+                                          .slice(0, 3)
+                                          .map((integration) => (
+                                            <Badge
+                                              key={integration}
+                                              variant="outline"
+                                              className="text-xs bg-purple-50 text-purple-700 border-purple-200"
+                                            >
+                                              {integration}
+                                            </Badge>
+                                          ))}
+                                        {demo.selected_integrations.length >
+                                          3 && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs bg-gray-50 text-gray-600 border-gray-200"
+                                          >
+                                            +
+                                            {demo.selected_integrations.length -
+                                              3}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedDemoForView(demo);
+                                          setIsViewDemoIntegrationsDialogOpen(
+                                            true
+                                          );
+                                        }}
+                                        className="hover:bg-purple-50 p-1"
+                                      >
+                                        <Eye className="h-3 w-3 text-purple-600" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-gray-400">
+                                      No integrations
+                                    </span>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="font-mono text-sm text-gray-800">
                                 <div className="flex items-center gap-2">
@@ -2266,6 +2567,155 @@ export function InternDashboard({ user, onLogout }) {
                   Close
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Demo Integrations Dialog */}
+        <Dialog
+          open={isViewDemoIntegrationsDialogOpen}
+          onOpenChange={setIsViewDemoIntegrationsDialogOpen}
+        >
+          <DialogContent className="bg-white/95 backdrop-blur-sm">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                {selectedDemoForView?.first_name}{" "}
+                {selectedDemoForView?.last_name} - Integrations
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                All integrations selected for this demo account
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selectedDemoForView?.selected_integrations &&
+              selectedDemoForView.selected_integrations.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedDemoForView.selected_integrations.map(
+                    (integration) => (
+                      <Badge
+                        key={integration}
+                        variant="outline"
+                        className="text-sm bg-purple-50 text-purple-700 border-purple-200 p-2"
+                      >
+                        {integration}
+                      </Badge>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">No integrations selected</div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Customer Feedback Dialog */}
+        <Dialog
+          open={isViewCustomerFeedbackDialogOpen}
+          onOpenChange={setIsViewCustomerFeedbackDialogOpen}
+        >
+          <DialogContent className="bg-white/95 backdrop-blur-sm max-w-4xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Customer Feedback Scores
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Detailed customer feedback and satisfaction scores for completed
+                projects
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selectedRequestForFeedback &&
+              selectedRequestForFeedback.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedRequestForFeedback.map((request) => (
+                    <div
+                      key={request.id}
+                      className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            {request.first_name} {request.last_name} -{" "}
+                            {request.company}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {request.primary_use_case}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`text-sm ${
+                            request.customer_satisfaction_score >= 8
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : request.customer_satisfaction_score >= 6
+                              ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                              : "bg-red-50 text-red-700 border-red-200"
+                          }`}
+                        >
+                          {request.customer_satisfaction_score}/10
+                        </Badge>
+                      </div>
+
+                      {request.customer_feedback && (
+                        <div className="space-y-2">
+                          <h5 className="font-medium text-gray-800">
+                            Feedback:
+                          </h5>
+                          <div className="bg-white p-3 rounded border border-gray-200">
+                            <p className="text-sm text-gray-700">
+                              {request.customer_feedback}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">
+                            Pilot Projects Delivered:
+                          </span>
+                          <span className="ml-2 text-gray-600">
+                            {request.pilot_projects_delivered || "N/A"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">
+                            L&D Session Satisfactory:
+                          </span>
+                          <span className="ml-2 text-gray-600">
+                            {request.ld_session_satisfactory ? "Yes" : "No"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">
+                            Delivered On Time:
+                          </span>
+                          <span className="ml-2 text-gray-600">
+                            {request.delivered_on_time ? "Yes" : "No"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">
+                            Effective Support:
+                          </span>
+                          <span className="ml-2 text-gray-600">
+                            {request.effective_support ? "Yes" : "No"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">
+                    No customer feedback available yet
+                  </div>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>

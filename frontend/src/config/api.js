@@ -1,6 +1,6 @@
-// API Configuration
+// API Configuration using environment variables
 export const API_CONFIG = {
-  BASE_URL: "http://localhost:5000/api",
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
   ENDPOINTS: {
     USER_PORTAL: "/user-portal",
     ADMIN_PORTAL: "/admin-portal",
@@ -26,7 +26,11 @@ export const buildApiUrl = (endpoint) => {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
 };
 
-// Environment info
-export const ENV = "development";
+// Environment info from environment variables
+export const ENV = import.meta.env.VITE_ENV || "development";
 export const IS_PRODUCTION = ENV === "production";
 export const IS_DEVELOPMENT = ENV === "development";
+
+// Log current environment for debugging
+console.log(`🚀 API Base URL: ${API_CONFIG.BASE_URL}`);
+console.log(`🌍 Environment: ${ENV}`);
