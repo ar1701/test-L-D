@@ -2075,7 +2075,7 @@ export function AdminDashboard() {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-gray-700 font-medium">
-                            Intern Assignment
+                            Consultant Assignment
                           </Label>
                           <Select
                             value={internAssignmentFilter}
@@ -2097,7 +2097,7 @@ export function AdminDashboard() {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-gray-700 font-medium">
-                            Assigned Analytics Consultant
+                            Assigned Consultants
                           </Label>
                           <Select
                             value={internFilterForCustomers}
@@ -2231,7 +2231,7 @@ export function AdminDashboard() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-gray-700 font-medium">
-                          Intern Assignment
+                          Assigned or not
                         </Label>
                         <Select
                           value={internAssignmentFilter}
@@ -2246,7 +2246,7 @@ export function AdminDashboard() {
                               Has Assigned Analytics Consultant
                             </SelectItem>
                             <SelectItem value="unassigned">
-                              No Assigned Analytics Consultant
+                              Not Assigned Analytics Consultant
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -2374,7 +2374,7 @@ export function AdminDashboard() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-gray-700 font-medium">
-                          Assigned Intern
+                          Assigned Consultants
                         </Label>
                         <Select
                           value={internFilterForCustomers}
