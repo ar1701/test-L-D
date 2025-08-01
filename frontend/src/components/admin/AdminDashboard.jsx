@@ -4887,7 +4887,7 @@ export function AdminDashboard() {
         >
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Intern Details</DialogTitle>
+              <DialogTitle>Analytics Consultant Details</DialogTitle>
               <DialogDescription>
                 Complete information for {selectedIntern?.name}
               </DialogDescription>
