@@ -26,6 +26,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { Checkbox } from "../ui/checkbox";
 import { Progress } from "../ui/progress";
 import {
   Dialog,
@@ -80,6 +81,7 @@ import {
   MessageCircleIcon,
   Menu,
   X,
+  Mail,
 } from "lucide-react";
 import { apiService } from "../../services/api";
 import { NotificationDropdown } from "../ui/notifications";
@@ -102,24 +104,43 @@ const generateUsername = (name) => {
   return `intern_${cleanName}_${randomNum}`;
 };
 
-// Available integrations
+// Available datasources
 const availableIntegrations = [
-  "Salesforce",
-  "Databricks",
-  "MySQL",
+  "CSV",
+  "Excel",
+  "Google Sheet",
+  "Excel Sheet",
+  "PDF",
+  "Image",
+  "Video",
   "PostgreSQL",
+  "MySQL",
+  "MSSQL",
   "MongoDB",
-  "AWS S3",
-  "Azure",
-  "Google Cloud",
-  "Tableau",
-  "Power BI",
-  "Slack",
-  "Microsoft Teams",
-  "Jira",
-  "Confluence",
+  "Snowflake",
+  "Airtable",
+  "Databricks",
+  "Supabase",
+  "Neo4j",
+  "Zoho",
+  "Salesforce",
+  "ServiceNow",
+  "SAP",
   "HubSpot",
-  "Zendesk",
+  "FreshWorks",
+  "Odoo",
+  "Tally",
+  "IBM DB2",
+  "Elastic Search",
+  "InfluxDB",
+  "Apache Cassandra",
+  "Redis",
+  "TimescaleDB",
+  "Prometheus",
+  "Grafna Loki",
+  "Grafna Tempo",
+  "ClickHouse",
+  "Shopify",
 ];
 
 // Industry domains from register form
@@ -240,6 +261,8 @@ export function AdminDashboard() {
     useState(false);
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
   const [isUseCasesModalOpen, setIsUseCasesModalOpen] = useState(false);
+  const [isViewIntegrationsModalOpen, setIsViewIntegrationsModalOpen] =
+    useState(false);
   const [isViewInternDetailsOpen, setIsViewInternDetailsOpen] = useState(false);
   const [isInternNoteModalOpen, setIsInternNoteModalOpen] = useState(false);
   const [isAdminNoteModalOpen, setIsAdminNoteModalOpen] = useState(false);
@@ -263,6 +286,15 @@ export function AdminDashboard() {
     useState(false);
   const [isAddDemoAccountDialogOpen, setIsAddDemoAccountDialogOpen] =
     useState(false);
+
+  // New dialog states for viewing individual customer and demo details
+  const [isViewCustomerDetailsModalOpen, setIsViewCustomerDetailsModalOpen] =
+    useState(false);
+  const [isViewDemoDetailsModalOpen, setIsViewDemoDetailsModalOpen] =
+    useState(false);
+  const [selectedCustomerForDetails, setSelectedCustomerForDetails] =
+    useState(null);
+  const [selectedDemoForDetails, setSelectedDemoForDetails] = useState(null);
 
   // Filter states
   // Filter states
@@ -298,6 +330,7 @@ export function AdminDashboard() {
   // New filter states for customer records
   const [internFilterForCustomers, setInternFilterForCustomers] =
     useState("all");
+  const [datasourceFilter, setDatasourceFilter] = useState("all");
 
   // State for inline editing dashboard counts
   const [editingDashboard, setEditingDashboard] = useState({});
@@ -329,6 +362,8 @@ export function AdminDashboard() {
     industryDomain: "",
     primaryUseCase: "",
     accountType: "ld",
+    selectedIntegrations: [],
+    customIntegration: "",
   });
 
   const [projectEditData, setProjectEditData] = useState({
@@ -362,6 +397,8 @@ export function AdminDashboard() {
     industry_domain: "",
     primary_use_case: "",
     account_type: "",
+    selected_integrations: [],
+    custom_integration: "",
   });
   const [editedDemoAccount, setEditedDemoAccount] = useState({
     first_name: "",
@@ -460,6 +497,19 @@ export function AdminDashboard() {
     if (internFilterForCustomers !== "all") {
       const customerInternId = customer.assigned_intern_id?.toString();
       if (customerInternId !== internFilterForCustomers) return false;
+    }
+
+    // Datasource filter
+    if (datasourceFilter !== "all") {
+      if (
+        !customer.selected_integrations ||
+        !Array.isArray(customer.selected_integrations)
+      ) {
+        return false;
+      }
+      if (!customer.selected_integrations.includes(datasourceFilter)) {
+        return false;
+      }
     }
 
     // Date range filter
@@ -675,6 +725,8 @@ export function AdminDashboard() {
         industryDomain: newCustomer.industryDomain,
         primaryUseCase: newCustomer.primaryUseCase,
         accountType: newCustomer.accountType,
+        selectedIntegrations: newCustomer.selectedIntegrations,
+        customIntegration: newCustomer.customIntegration,
       };
 
       const response = await apiService.auth.register(customerData);
@@ -690,6 +742,7 @@ export function AdminDashboard() {
           industryDomain: "",
           primaryUseCase: "",
           accountType: "ld",
+          selectedIntegrations: [],
         });
         setIsAddCustomerDialogOpen(false);
         setError(null); // Clear any previous errors
@@ -886,6 +939,8 @@ export function AdminDashboard() {
       industry_domain: customer.industry_domain,
       primary_use_case: customer.primary_use_case || "",
       account_type: customer.account_type || "ld",
+      selected_integrations: customer.selected_integrations || [],
+      custom_integration: customer.custom_integration || "",
     });
     setIsEditCustomerDialogOpen(true);
   };
@@ -917,6 +972,7 @@ export function AdminDashboard() {
           industry_domain: "",
           primary_use_case: "",
           account_type: "",
+          selected_integrations: [],
         });
         loadData(); // Reload to get fresh data
       } else {
@@ -1315,7 +1371,23 @@ export function AdminDashboard() {
     setIndustryFilter("all");
     setInternAssignmentFilter("all");
     setInternFilterForCustomers("all");
+    setDatasourceFilter("all");
     setDateRangeFilter({ start: "", end: "" });
+  };
+
+  const handleRefreshDemoExpiry = async () => {
+    try {
+      const response = await apiService.admin.refreshDemoExpiry();
+      if (response.data.success) {
+        loadData();
+        setError(null);
+      } else {
+        setError("Failed to refresh demo expiry: " + response.data.message);
+      }
+    } catch (err) {
+      setError("Error refreshing demo expiry: " + err.message);
+      console.error("Error refreshing demo expiry:", err);
+    }
   };
 
   // Stats calculations
@@ -1388,6 +1460,10 @@ export function AdminDashboard() {
   };
 
   // New dialog states for viewing integrations and customers
+  const [isViewInternDashboardOpen, setIsViewInternDashboardOpen] =
+    useState(false);
+  const [selectedInternForDashboard, setSelectedInternForDashboard] =
+    useState(null);
   const [
     isViewInternIntegrationsDialogOpen,
     setIsViewInternIntegrationsDialogOpen,
@@ -1438,10 +1514,10 @@ export function AdminDashboard() {
                     <Users className="h-4 w-4 text-blue-600" />
                     <div>
                       <div className="font-medium text-gray-900">
-                        Add Intern
+                        Add Analytics Consultant
                       </div>
                       <div className="text-xs text-gray-500">
-                        Create new intern account
+                        Create new analytics consultant account
                       </div>
                     </div>
                   </div>
@@ -1519,10 +1595,10 @@ export function AdminDashboard() {
                       <Users className="h-4 w-4 text-blue-600" />
                       <div>
                         <div className="font-medium text-gray-900">
-                          Add Intern
+                          Add Analytics Consultant
                         </div>
                         <div className="text-xs text-gray-500">
-                          Create new intern account
+                          Create new analytics consultant account
                         </div>
                       </div>
                     </div>
@@ -1788,7 +1864,7 @@ export function AdminDashboard() {
               value="intern-management"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
             >
-              Intern Management
+              Analytics Consultants
             </TabsTrigger>
             <TabsTrigger
               value="demo-accounts"
@@ -2011,17 +2087,17 @@ export function AdminDashboard() {
                             <SelectContent>
                               <SelectItem value="all">All Customers</SelectItem>
                               <SelectItem value="assigned">
-                                Has Assigned Intern
+                                Has Assigned Analytics Consultant
                               </SelectItem>
                               <SelectItem value="unassigned">
-                                No Assigned Intern
+                                No Assigned Analytics Consultant
                               </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-gray-700 font-medium">
-                            Assigned Intern
+                            Assigned Analytics Consultant
                           </Label>
                           <Select
                             value={internFilterForCustomers}
@@ -2031,10 +2107,35 @@ export function AdminDashboard() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">All Interns</SelectItem>
+                              <SelectItem value="all">
+                                All Analytics Consultants
+                              </SelectItem>
                               {interns.map((intern) => (
                                 <SelectItem key={intern.id} value={intern.id}>
                                   {intern.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700 font-medium">
+                            Datasource
+                          </Label>
+                          <Select
+                            value={datasourceFilter}
+                            onValueChange={setDatasourceFilter}
+                          >
+                            <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              <SelectItem value="all">
+                                All Datasources
+                              </SelectItem>
+                              {availableIntegrations.map((datasource) => (
+                                <SelectItem key={datasource} value={datasource}>
+                                  {datasource}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -2142,10 +2243,10 @@ export function AdminDashboard() {
                           <SelectContent>
                             <SelectItem value="all">All Customers</SelectItem>
                             <SelectItem value="assigned">
-                              Has Assigned Intern
+                              Has Assigned Analytics Consultant
                             </SelectItem>
                             <SelectItem value="unassigned">
-                              No Assigned Intern
+                              No Assigned Analytics Consultant
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -2283,10 +2384,33 @@ export function AdminDashboard() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All Interns</SelectItem>
+                            <SelectItem value="all">
+                              All Analytics Consultants
+                            </SelectItem>
                             {interns.map((intern) => (
                               <SelectItem key={intern.id} value={intern.id}>
                                 {intern.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-gray-700 font-medium">
+                          Datasource
+                        </Label>
+                        <Select
+                          value={datasourceFilter}
+                          onValueChange={setDatasourceFilter}
+                        >
+                          <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            <SelectItem value="all">All Datasources</SelectItem>
+                            {availableIntegrations.map((datasource) => (
+                              <SelectItem key={datasource} value={datasource}>
+                                {datasource}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -2319,40 +2443,46 @@ export function AdminDashboard() {
                     <Table>
                       <TableHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
                         <TableRow className="border-gray-200/50">
-                          <TableHead className="font-semibold text-gray-700 min-w-[200px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Customer
                           </TableHead>
                           <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Company
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Industry
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700 min-w-[200px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
+                            Specialization
+                          </TableHead>
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Use Case
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700 min-w-[100px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
+                            Datasources
+                          </TableHead>
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Dashboards Req.
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700 min-w-[100px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Dashboards Del.
                           </TableHead>
                           <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Admin Note
                           </TableHead>
                           <TableHead className="font-semibold text-gray-700 min-w-[150px]">
-                            Intern Note
+                            Analytics Consultant Note
                           </TableHead>
                           <TableHead className="font-semibold text-gray-700 min-w-[150px]">
-                            Assigned Intern
+                            Assigned Analytics Consultant
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700 min-w-[100px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Status
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700 min-w-[100px]">
+                          <TableHead className="font-semibold text-gray-700 min-w-[150px]">
                             Created
                           </TableHead>
-                          <TableHead className="text-right font-semibold text-gray-700 min-w-[100px]">
+                          <TableHead className="text-right font-semibold text-gray-700 min-w-[150px]">
                             Actions
                           </TableHead>
                         </TableRow>
@@ -2361,7 +2491,7 @@ export function AdminDashboard() {
                         {filteredCustomers.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={12}
+                              colSpan={14}
                               className="text-center py-12 text-gray-500"
                             >
                               <div className="flex flex-col items-center">
@@ -2404,18 +2534,68 @@ export function AdminDashboard() {
                                 {request.industry_domain}
                               </TableCell>
                               <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    request.account_type === "demo"
+                                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                                      : "bg-blue-50 text-blue-700 border-blue-200"
+                                  }
+                                >
+                                  {request.account_type === "demo"
+                                    ? "Demo"
+                                    : "L&D"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="p-0 h-auto text-left justify-start hover:bg-blue-50"
+                                  onClick={() => {
+                                    setSelectedCustomer(request);
+                                    setIsUseCasesModalOpen(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                </Button>
+                              </TableCell>
+                              <TableCell>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="p-0 h-auto text-left justify-start max-w-48 hover:bg-blue-50"
                                   onClick={() => {
                                     setSelectedCustomer(request);
-                                    setIsUseCasesModalOpen(true);
+                                    setIsViewIntegrationsModalOpen(true);
                                   }}
                                 >
-                                  <div className="truncate text-gray-700">
-                                    {request.primary_use_case ||
-                                      "Not specified"}
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap gap-1 flex-1">
+                                      {request.selected_integrations
+                                        ?.slice(0, 2)
+                                        .map((datasource) => (
+                                          <Badge
+                                            key={datasource}
+                                            variant="outline"
+                                            className="text-xs bg-purple-50 text-purple-700 border-purple-200"
+                                          >
+                                            {datasource}
+                                          </Badge>
+                                        ))}
+                                      {request.selected_integrations?.length >
+                                        2 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs bg-gray-50 text-gray-600 border-gray-200"
+                                        >
+                                          +
+                                          {request.selected_integrations
+                                            .length - 2}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <Eye className="h-4 w-4 text-gray-500" />
                                   </div>
                                 </Button>
                               </TableCell>
@@ -2834,10 +3014,10 @@ export function AdminDashboard() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <CardTitle className="text-lg sm:text-xl text-gray-900">
-                      Intern Management
+                      Analytics Consultants
                     </CardTitle>
                     <CardDescription className="text-gray-600">
-                      Manage intern accounts and credentials
+                      Manage analytics consultant accounts and credentials
                     </CardDescription>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -2909,7 +3089,7 @@ export function AdminDashboard() {
 
                   <div className="space-y-2">
                     <Label className="text-gray-700 font-medium">
-                      Integration
+                      Datasource
                     </Label>
                     <Select
                       value={internIntegrationFilter}
@@ -2919,10 +3099,10 @@ export function AdminDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
-                        <SelectItem value="all">All Integrations</SelectItem>
-                        {availableIntegrations.map((integration) => (
-                          <SelectItem key={integration} value={integration}>
-                            {integration}
+                        <SelectItem value="all">All Datasources</SelectItem>
+                        {availableIntegrations.map((datasource) => (
+                          <SelectItem key={datasource} value={datasource}>
+                            {datasource}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -2975,7 +3155,7 @@ export function AdminDashboard() {
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        placeholder="Search interns..."
+                        placeholder="Search Analytics Consultants..."
                         value={internSearchFilter}
                         onChange={(e) => setInternSearchFilter(e.target.value)}
                         className="pl-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -3010,7 +3190,7 @@ export function AdminDashboard() {
 
                     <div className="space-y-2">
                       <Label className="text-gray-700 font-medium">
-                        Integration
+                        Datasource
                       </Label>
                       <Select
                         value={internIntegrationFilter}
@@ -3020,10 +3200,10 @@ export function AdminDashboard() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="max-h-60">
-                          <SelectItem value="all">All Integrations</SelectItem>
-                          {availableIntegrations.map((integration) => (
-                            <SelectItem key={integration} value={integration}>
-                              {integration}
+                          <SelectItem value="all">All Datasources</SelectItem>
+                          {availableIntegrations.map((datasource) => (
+                            <SelectItem key={datasource} value={datasource}>
+                              {datasource}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -3080,7 +3260,7 @@ export function AdminDashboard() {
                       <div className="relative">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
-                          placeholder="Search interns..."
+                          placeholder="Search Analytics Consultants..."
                           value={internSearchFilter}
                           onChange={(e) =>
                             setInternSearchFilter(e.target.value)
@@ -3095,7 +3275,8 @@ export function AdminDashboard() {
                 <div className="text-sm text-gray-600 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200/50">
                   <div className="flex items-center">
                     <Users className="h-4 w-4 mr-2 text-blue-600" />
-                    Showing {filteredInterns.length} of {interns.length} interns
+                    Showing {filteredInterns.length} of {interns.length}{" "}
+                    Analytics Consultants
                   </div>
                 </div>
                 <div className="overflow-x-auto bg-white rounded-lg border border-gray-200/50 shadow-sm">
@@ -3124,7 +3305,7 @@ export function AdminDashboard() {
                           Specialization
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 min-w-[200px] px-2 sm:px-4 hidden lg:table-cell">
-                          Integrations
+                          Datasources
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 min-w-[150px] px-2 sm:px-4 hidden md:table-cell">
                           Customers
@@ -3152,7 +3333,21 @@ export function AdminDashboard() {
                           }
                         >
                           <TableCell className="font-medium text-gray-900 py-4">
-                            {intern.name}
+                            <div className="flex items-center gap-2">
+                              <span>{intern.name}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedInternForDashboard(intern);
+                                  setIsViewInternDashboardOpen(true);
+                                }}
+                                className="hover:bg-blue-50 p-1"
+                                title="View Analytics Consultant Dashboard"
+                              >
+                                <Eye className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -3242,22 +3437,22 @@ export function AdminDashboard() {
                                 <div className="flex items-center gap-2">
                                   <div className="flex flex-wrap gap-1 flex-1">
                                     {intern.integrations
-                                      .slice(0, 3)
-                                      .map((integration) => (
+                                      .slice(0, 2)
+                                      .map((datasource) => (
                                         <Badge
-                                          key={integration}
+                                          key={datasource}
                                           variant="outline"
                                           className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
                                         >
-                                          {integration}
+                                          {datasource}
                                         </Badge>
                                       ))}
-                                    {intern.integrations.length > 3 && (
+                                    {intern.integrations.length > 2 && (
                                       <Badge
                                         variant="outline"
                                         className="text-xs bg-gray-50 text-gray-600 border-gray-200"
                                       >
-                                        +{intern.integrations.length - 3}
+                                        +{intern.integrations.length - 2}
                                       </Badge>
                                     )}
                                   </div>
@@ -3277,7 +3472,7 @@ export function AdminDashboard() {
                                 </div>
                               ) : (
                                 <span className="text-sm text-gray-400">
-                                  No integrations
+                                  No datasources
                                 </span>
                               )}
                             </div>
@@ -3438,9 +3633,19 @@ export function AdminDashboard() {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button
+                      onClick={handleRefreshDemoExpiry}
+                      className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 w-full sm:w-auto"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Check Demo Expiry
+                    </Button>
+                    <Button
                       variant="outline"
                       onClick={() => {
-                        // Clear demo filters if any
+                        setDemoStatusFilter("all");
+                        setDemoIndustryFilter("all");
+                        setDemoSearchFilter("");
+                        setDemoDateRangeFilter({ start: "", end: "" });
                         setIsMobileDemoFiltersOpen(false);
                       }}
                       className="bg-white/80 hover:bg-white border-gray-300 w-full sm:w-auto"
@@ -3613,20 +3818,6 @@ export function AdminDashboard() {
                         className="bg-white border-gray-300"
                       />
                     </div>
-                    <div className="flex items-end">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setDemoStatusFilter("all");
-                          setDemoIndustryFilter("all");
-                          setDemoSearchFilter("");
-                          setDemoDateRangeFilter({ start: "", end: "" });
-                        }}
-                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        Clear Filters
-                      </Button>
-                    </div>
                   </div>
                 </div>
 
@@ -3762,20 +3953,6 @@ export function AdminDashboard() {
                         className="bg-white border-gray-300"
                       />
                     </div>
-                    <div>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setDemoStatusFilter("all");
-                          setDemoIndustryFilter("all");
-                          setDemoSearchFilter("");
-                          setDemoDateRangeFilter({ start: "", end: "" });
-                        }}
-                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        Clear Filters
-                      </Button>
-                    </div>
                   </div>
                 )}
 
@@ -3803,16 +3980,16 @@ export function AdminDashboard() {
                           Status
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
-                          Integrations
+                          Datasources
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden md:table-cell">
-                          Assigned Intern
+                          Assigned Analytics Consultant
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
                           Admin Note
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden lg:table-cell">
-                          Intern Note
+                          Analytics Consultant Note
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 px-2 sm:px-4 hidden xl:table-cell">
                           Created
@@ -4314,6 +4491,41 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Datasources */}
+                <div>
+                  <h3 className="font-semibold mb-2">Datasources</h3>
+                  <div className="text-sm">
+                    {selectedCustomer.selected_integrations &&
+                    selectedCustomer.selected_integrations.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCustomer.selected_integrations.map(
+                          (datasource) => (
+                            <Badge
+                              key={datasource}
+                              variant="outline"
+                              className="bg-purple-50 text-purple-700 border-purple-200"
+                            >
+                              {datasource}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">No datasources selected</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Custom Integration */}
+                {selectedCustomer.custom_integration && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Custom Integration</h3>
+                    <div className="bg-yellow-50 p-3 rounded text-sm">
+                      {selectedCustomer.custom_integration}
+                    </div>
+                  </div>
+                )}
+
                 {/* Admin Note */}
                 {selectedCustomer.admin_note && (
                   <div>
@@ -4628,6 +4840,46 @@ export function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
+        {/* Integrations Modal */}
+        <Dialog
+          open={isViewIntegrationsModalOpen}
+          onOpenChange={setIsViewIntegrationsModalOpen}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Datasources</DialogTitle>
+              <DialogDescription>
+                Datasources for {selectedCustomer?.first_name}{" "}
+                {selectedCustomer?.last_name}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedCustomer && (
+              <div className="space-y-4">
+                {selectedCustomer.selected_integrations &&
+                selectedCustomer.selected_integrations.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedCustomer.selected_integrations.map(
+                      (integration) => (
+                        <Badge
+                          key={integration}
+                          variant="outline"
+                          className="text-sm bg-indigo-50 text-indigo-700 border-indigo-200 p-2"
+                        >
+                          {integration}
+                        </Badge>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-gray-500">No datasources selected</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Intern Details Modal */}
         <Dialog
           open={isViewInternDetailsOpen}
@@ -4705,47 +4957,104 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Integrations Section */}
+                {/* Datasources Section */}
                 <div>
-                  <h3 className="font-semibold mb-2">Integrations</h3>
+                  <h3 className="font-semibold mb-2">Datasources</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedIntern.integrations &&
                     selectedIntern.integrations.length > 0 ? (
-                      selectedIntern.integrations.map((integration) => (
+                      selectedIntern.integrations.map((datasource) => (
                         <Badge
-                          key={integration}
+                          key={datasource}
                           variant="outline"
                           className="bg-indigo-50 text-indigo-700 border-indigo-200"
                         >
-                          {integration}
+                          {datasource}
                         </Badge>
                       ))
                     ) : (
                       <span className="text-sm text-gray-500">
-                        No integrations assigned
+                        No datasources assigned
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Customer Accounts Section */}
+                {/* Assigned Customer Requests Section */}
                 <div>
-                  <h3 className="font-semibold mb-2">Customer Accounts</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedIntern.customer_companies &&
-                    selectedIntern.customer_companies.length > 0 ? (
-                      selectedIntern.customer_companies.map((company) => (
-                        <Badge
-                          key={company}
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                  <h3 className="font-semibold mb-2">
+                    Assigned Customer Requests
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedIntern.customer_requests &&
+                    selectedIntern.customer_requests.length > 0 ? (
+                      selectedIntern.customer_requests.map((customer) => (
+                        <div
+                          key={customer.id}
+                          className="flex items-center justify-between p-3 bg-emerald-50 rounded border border-emerald-200"
                         >
-                          {company}
-                        </Badge>
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4 text-emerald-600" />
+                            <span className="font-medium text-gray-900">
+                              {customer.company}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCustomerForDetails(customer);
+                              setIsViewCustomerDetailsModalOpen(true);
+                            }}
+                            className="hover:bg-emerald-100"
+                            title="View Customer Details"
+                          >
+                            <Eye className="h-4 w-4 text-emerald-600" />
+                          </Button>
+                        </div>
                       ))
                     ) : (
                       <span className="text-sm text-gray-500">
-                        No customers assigned
+                        No customer requests assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Assigned Demo Accounts Section */}
+                <div>
+                  <h3 className="font-semibold mb-2">Assigned Demo Accounts</h3>
+                  <div className="space-y-2">
+                    {selectedIntern.demo_accounts &&
+                    selectedIntern.demo_accounts.length > 0 ? (
+                      selectedIntern.demo_accounts.map((demo) => (
+                        <div
+                          key={demo.id}
+                          className="flex items-center justify-between p-3 bg-purple-50 rounded border border-purple-200"
+                        >
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-purple-600" />
+                            <span className="font-medium text-gray-900">
+                              {demo.company}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedDemoForDetails(demo);
+                              setIsViewDemoDetailsModalOpen(true);
+                            }}
+                            className="hover:bg-purple-100"
+                            title="View Demo Details"
+                          >
+                            <Eye className="h-4 w-4 text-purple-600" />
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500">
+                        No demo accounts assigned
                       </span>
                     )}
                   </div>
@@ -5193,7 +5502,7 @@ export function AdminDashboard() {
           open={isEditCustomerDialogOpen}
           onOpenChange={setIsEditCustomerDialogOpen}
         >
-          <DialogContent className="bg-white/95 backdrop-blur-sm">
+          <DialogContent className="bg-white/95 backdrop-blur-sm max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-gray-900">
                 Edit Customer
@@ -5382,6 +5691,75 @@ export function AdminDashboard() {
                     <SelectItem value="demo">Demo Account</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="editIntegrations"
+                  className="text-gray-700 font-medium"
+                >
+                  Datasources
+                </Label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
+                  {availableIntegrations.map((integration) => (
+                    <div
+                      key={integration}
+                      className="flex items-center space-x-2"
+                    >
+                      <Checkbox
+                        id={`edit-integration-${integration}`}
+                        checked={
+                          editedCustomer.selected_integrations?.includes(
+                            integration
+                          ) || false
+                        }
+                        onCheckedChange={(checked) => {
+                          setEditedCustomer((prev) => ({
+                            ...prev,
+                            selected_integrations: checked
+                              ? [
+                                  ...(prev.selected_integrations || []),
+                                  integration,
+                                ]
+                              : (prev.selected_integrations || []).filter(
+                                  (i) => i !== integration
+                                ),
+                          }));
+                        }}
+                      />
+                      <Label
+                        htmlFor={`edit-integration-${integration}`}
+                        className="text-sm cursor-pointer"
+                      >
+                        {integration}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="editCustomIntegration"
+                  className="text-gray-700 font-medium"
+                >
+                  Custom Integration (Optional)
+                </Label>
+                <Textarea
+                  id="editCustomIntegration"
+                  value={editedCustomer.custom_integration}
+                  onChange={(e) =>
+                    setEditedCustomer((prev) => ({
+                      ...prev,
+                      custom_integration: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., SAP, Oracle, Custom API, etc."
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  rows={2}
+                />
+                <p className="text-xs text-gray-500">
+                  Mention any specific integration not listed above that you'd
+                  like to test
+                </p>
               </div>
               <div className="flex gap-3">
                 <Button
@@ -6054,10 +6432,10 @@ export function AdminDashboard() {
         <DialogContent className="bg-white/95 backdrop-blur-sm">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">
-              Add New Intern
+              Add New Analytics Consultant
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              Create a new intern account with credentials
+              Create a new analytics consultant account with credentials
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -6219,7 +6597,7 @@ export function AdminDashboard() {
         open={isAddCustomerDialogOpen}
         onOpenChange={setIsAddCustomerDialogOpen}
       >
-        <DialogContent className="bg-white/95 backdrop-blur-sm">
+        <DialogContent className="bg-white/95 backdrop-blur-sm max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">
               Add New Customer Manually
@@ -6413,6 +6791,75 @@ export function AdminDashboard() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerCustomIntegration"
+                className="text-gray-700 font-medium"
+              >
+                Custom Integration (Optional)
+              </Label>
+              <Textarea
+                id="customerCustomIntegration"
+                value={newCustomer.customIntegration}
+                onChange={(e) =>
+                  setNewCustomer((prev) => ({
+                    ...prev,
+                    customIntegration: e.target.value,
+                  }))
+                }
+                placeholder="e.g., SAP, Oracle, Custom API, etc."
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                rows={2}
+              />
+              <p className="text-xs text-gray-500">
+                Mention any specific integration not listed above that you'd
+                like to test
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="customerIntegrations"
+                className="text-gray-700 font-medium"
+              >
+                Datasources
+              </Label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
+                {availableIntegrations.map((integration) => (
+                  <div
+                    key={integration}
+                    className="flex items-center space-x-2"
+                  >
+                    <Checkbox
+                      id={`integration-${integration}`}
+                      checked={
+                        newCustomer.selectedIntegrations?.includes(
+                          integration
+                        ) || false
+                      }
+                      onCheckedChange={(checked) => {
+                        setNewCustomer((prev) => ({
+                          ...prev,
+                          selectedIntegrations: checked
+                            ? [
+                                ...(prev.selectedIntegrations || []),
+                                integration,
+                              ]
+                            : (prev.selectedIntegrations || []).filter(
+                                (i) => i !== integration
+                              ),
+                        }));
+                      }}
+                    />
+                    <Label
+                      htmlFor={`integration-${integration}`}
+                      className="text-sm cursor-pointer"
+                    >
+                      {integration}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                 <div className="flex items-center">
@@ -6451,29 +6898,29 @@ export function AdminDashboard() {
         <DialogContent className="bg-white/95 backdrop-blur-sm">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">
-              {selectedInternForView?.name} - Integrations
+              {selectedInternForView?.name} - Datasources
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              All integrations assigned to this intern
+              All datasources assigned to this Analytics Consultant
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {selectedInternForView?.integrations &&
             selectedInternForView.integrations.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
-                {selectedInternForView.integrations.map((integration) => (
+                {selectedInternForView.integrations.map((datasource) => (
                   <Badge
-                    key={integration}
+                    key={datasource}
                     variant="outline"
                     className="text-sm bg-indigo-50 text-indigo-700 border-indigo-200 p-2"
                   >
-                    {integration}
+                    {datasource}
                   </Badge>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="text-gray-500">No integrations assigned</div>
+                <div className="text-gray-500">No datasources assigned</div>
               </div>
             )}
           </div>
@@ -6491,7 +6938,7 @@ export function AdminDashboard() {
               {selectedInternForView?.name} - Assigned Customers
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              All customers assigned to this intern
+              All customers assigned to this Analytics Consultant
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -6558,6 +7005,507 @@ export function AdminDashboard() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Analytics Consultant Dashboard Dialog */}
+      <Dialog
+        open={isViewInternDashboardOpen}
+        onOpenChange={setIsViewInternDashboardOpen}
+      >
+        <DialogContent className="bg-white/95 backdrop-blur-sm max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              {selectedInternForDashboard?.name} - Analytics Consultant
+              Dashboard
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              View the dashboard and details for this Analytics Consultant
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Analytics Consultant Info */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200/50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Analytics Consultant Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p>
+                    <strong>Name:</strong> {selectedInternForDashboard?.name}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {selectedInternForDashboard?.email}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong>{" "}
+                    {selectedInternForDashboard?.phone || "N/A"}
+                  </p>
+                  <p>
+                    <strong>WhatsApp:</strong>{" "}
+                    {selectedInternForDashboard?.whatsapp || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p>
+                    <strong>Username:</strong>{" "}
+                    {selectedInternForDashboard?.username}
+                  </p>
+                  <p>
+                    <strong>Specialization:</strong>{" "}
+                    {selectedInternForDashboard?.specialization}
+                  </p>
+                  <p>
+                    <strong>Assigned Customers:</strong>{" "}
+                    {selectedInternForDashboard?.assigned_count || 0}
+                  </p>
+                  <p>
+                    <strong>Success Rate:</strong>{" "}
+                    {selectedInternForDashboard?.success_rate || "N/A"}%
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Datasources */}
+            {selectedInternForDashboard?.integrations &&
+              selectedInternForDashboard.integrations.length > 0 && (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200/50">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Datasources
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedInternForDashboard.integrations.map(
+                      (datasource) => (
+                        <Badge
+                          key={datasource}
+                          variant="outline"
+                          className="bg-purple-100 text-purple-700 border-purple-300"
+                        >
+                          {datasource}
+                        </Badge>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* Assigned Customer Requests */}
+            {selectedInternForDashboard?.customer_requests &&
+              selectedInternForDashboard.customer_requests.length > 0 && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200/50">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Assigned Customer Requests
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedInternForDashboard.customer_requests.map(
+                      (customer) => (
+                        <div
+                          key={customer.id}
+                          className="flex items-center justify-between p-3 bg-white rounded border"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4 text-emerald-600" />
+                            <div>
+                              <span className="font-medium text-gray-900">
+                                {customer.company}
+                              </span>
+                              <div className="text-sm text-gray-500">
+                                {customer.first_name} {customer.last_name} •{" "}
+                                {customer.industry_domain}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                customer.account_type === "demo"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                                  : "bg-blue-50 text-blue-700 border-blue-200"
+                              }
+                            >
+                              {customer.account_type === "demo"
+                                ? "Demo"
+                                : "L&D"}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedCustomerForDetails(customer);
+                                setIsViewCustomerDetailsModalOpen(true);
+                              }}
+                              className="hover:bg-emerald-100"
+                              title="View Customer Details"
+                            >
+                              <Eye className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* Assigned Demo Accounts */}
+            {selectedInternForDashboard?.demo_accounts &&
+              selectedInternForDashboard.demo_accounts.length > 0 && (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200/50">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Assigned Demo Accounts
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedInternForDashboard.demo_accounts.map((demo) => (
+                      <div
+                        key={demo.id}
+                        className="flex items-center justify-between p-3 bg-white rounded border"
+                      >
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-purple-500" />
+                          <div>
+                            <span className="font-medium text-gray-900">
+                              {demo.company}
+                            </span>
+                            <div className="text-sm text-gray-500">
+                              {demo.first_name} {demo.last_name} •{" "}
+                              {demo.industry_domain}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              demo.is_active
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : "bg-red-50 text-red-700 border-red-200"
+                            }
+                          >
+                            {demo.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedDemoForDetails(demo);
+                              setIsViewDemoDetailsModalOpen(true);
+                            }}
+                            className="hover:bg-purple-100"
+                            title="View Demo Details"
+                          >
+                            <Eye className="h-4 w-4 text-purple-600" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Performance Stats */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg border border-amber-200/50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Performance Statistics
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {selectedInternForDashboard?.assigned_count || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">Total Assigned</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {selectedInternForDashboard?.completed_count || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">Completed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {selectedInternForDashboard?.success_rate || 0}%
+                  </div>
+                  <div className="text-sm text-gray-600">Success Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {selectedInternForDashboard?.avg_dashboards || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">Avg Dashboards</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Details Modal */}
+      <Dialog
+        open={isViewCustomerDetailsModalOpen}
+        onOpenChange={setIsViewCustomerDetailsModalOpen}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Customer Details
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Complete information for {selectedCustomerForDetails?.first_name}{" "}
+              {selectedCustomerForDetails?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedCustomerForDetails && (
+            <div className="space-y-6">
+              {/* Contact Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center text-gray-900">
+                    <User className="h-4 w-4 mr-2 text-blue-600" />
+                    Contact Information
+                  </h3>
+                  <div className="space-y-2 text-sm bg-blue-50 p-4 rounded-lg">
+                    <p>
+                      <strong>Name:</strong>{" "}
+                      {selectedCustomerForDetails.first_name}{" "}
+                      {selectedCustomerForDetails.last_name}
+                    </p>
+                    <p className="flex items-center">
+                      <Mail className="h-3 w-3 mr-1 text-blue-600" />
+                      {selectedCustomerForDetails.email}
+                    </p>
+                    <p className="flex items-center">
+                      <Phone className="h-3 w-3 mr-1 text-blue-600" />
+                      {selectedCustomerForDetails.phone}
+                    </p>
+                    <p className="flex items-center">
+                      <Building className="h-3 w-3 mr-1 text-blue-600" />
+                      {selectedCustomerForDetails.company}
+                    </p>
+                    <p>
+                      <strong>Industry:</strong>{" "}
+                      {selectedCustomerForDetails.industry_domain}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900">
+                    Project Status
+                  </h3>
+                  <div className="space-y-2 text-sm bg-emerald-50 p-4 rounded-lg">
+                    <p>
+                      <strong>Account Type:</strong>{" "}
+                      {selectedCustomerForDetails.account_type}
+                    </p>
+                    <p className="flex items-center">
+                      <strong>Status:</strong>{" "}
+                      <Badge className="ml-2">
+                        {selectedCustomerForDetails.status}
+                      </Badge>
+                    </p>
+                    <p>
+                      <strong>Dashboards Requested:</strong>{" "}
+                      {selectedCustomerForDetails.dashboards_requested || 0}
+                    </p>
+                    <p>
+                      <strong>Dashboards Delivered:</strong>{" "}
+                      {selectedCustomerForDetails.dashboards_delivered || 0}
+                    </p>
+                    <p>
+                      <strong>Created:</strong>{" "}
+                      {new Date(
+                        selectedCustomerForDetails.created_at
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Use Case */}
+              <div>
+                <h3 className="font-semibold mb-2 text-gray-900">Use Case</h3>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                  {selectedCustomerForDetails.primary_use_case ||
+                    "Not specified"}
+                </div>
+              </div>
+
+              {/* Selected Datasources */}
+              <div>
+                <h3 className="font-semibold mb-2 text-gray-900">
+                  Selected Datasources
+                </h3>
+                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                  {selectedCustomerForDetails.selected_integrations &&
+                  selectedCustomerForDetails.selected_integrations.length >
+                    0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCustomerForDetails.selected_integrations.map(
+                        (datasource) => (
+                          <Badge
+                            key={datasource}
+                            variant="outline"
+                            className="bg-indigo-100 text-indigo-700 border-indigo-300"
+                          >
+                            {datasource}
+                          </Badge>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">
+                      No datasources selected
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Custom Integration */}
+              {selectedCustomerForDetails.custom_integration && (
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900">
+                    Custom Integration
+                  </h3>
+                  <div className="bg-orange-50 p-4 rounded-lg text-sm border border-orange-200">
+                    {selectedCustomerForDetails.custom_integration}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Demo Details Modal */}
+      <Dialog
+        open={isViewDemoDetailsModalOpen}
+        onOpenChange={setIsViewDemoDetailsModalOpen}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Demo Account Details
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Complete information for {selectedDemoForDetails?.first_name}{" "}
+              {selectedDemoForDetails?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDemoForDetails && (
+            <div className="space-y-6">
+              {/* Contact Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center text-gray-900">
+                    <User className="h-4 w-4 mr-2 text-purple-600" />
+                    Contact Information
+                  </h3>
+                  <div className="space-y-2 text-sm bg-purple-50 p-4 rounded-lg">
+                    <p>
+                      <strong>Name:</strong> {selectedDemoForDetails.first_name}{" "}
+                      {selectedDemoForDetails.last_name}
+                    </p>
+                    <p className="flex items-center">
+                      <Mail className="h-3 w-3 mr-1 text-purple-600" />
+                      {selectedDemoForDetails.email}
+                    </p>
+                    <p className="flex items-center">
+                      <Phone className="h-3 w-3 mr-1 text-purple-600" />
+                      {selectedDemoForDetails.phone}
+                    </p>
+                    <p className="flex items-center">
+                      <Building className="h-3 w-3 mr-1 text-purple-600" />
+                      {selectedDemoForDetails.company}
+                    </p>
+                    <p>
+                      <strong>Industry:</strong>{" "}
+                      {selectedDemoForDetails.industry_domain}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900">
+                    Demo Account Status
+                  </h3>
+                  <div className="space-y-2 text-sm bg-purple-50 p-4 rounded-lg">
+                    <p>
+                      <strong>Username:</strong>{" "}
+                      <span className="font-mono">
+                        {selectedDemoForDetails.username}
+                      </span>
+                    </p>
+                    <p>
+                      <strong>Status:</strong>{" "}
+                      <Badge
+                        className={
+                          selectedDemoForDetails.is_active
+                            ? "bg-green-100 text-green-700 border-green-200"
+                            : "bg-red-100 text-red-700 border-red-200"
+                        }
+                      >
+                        {selectedDemoForDetails.is_active
+                          ? "Active"
+                          : "Inactive"}
+                      </Badge>
+                    </p>
+                    <p>
+                      <strong>Expires:</strong>{" "}
+                      {new Date(
+                        selectedDemoForDetails.expires_at
+                      ).toLocaleDateString()}
+                    </p>
+                    <p>
+                      <strong>Created:</strong>{" "}
+                      {new Date(
+                        selectedDemoForDetails.created_at
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Datasources */}
+              <div>
+                <h3 className="font-semibold mb-2 text-gray-900">
+                  Selected Datasources
+                </h3>
+                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                  {selectedDemoForDetails.selected_integrations &&
+                  selectedDemoForDetails.selected_integrations.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedDemoForDetails.selected_integrations.map(
+                        (datasource) => (
+                          <Badge
+                            key={datasource}
+                            variant="outline"
+                            className="bg-indigo-100 text-indigo-700 border-indigo-300"
+                          >
+                            {datasource}
+                          </Badge>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">
+                      No datasources selected
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Custom Integration */}
+              {selectedDemoForDetails.custom_integration && (
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900">
+                    Custom Integration
+                  </h3>
+                  <div className="bg-orange-50 p-4 rounded-lg text-sm border border-orange-200">
+                    {selectedDemoForDetails.custom_integration}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

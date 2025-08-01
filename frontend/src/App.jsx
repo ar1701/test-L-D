@@ -11,7 +11,7 @@ import { ThemeProvider } from "./components/theme-provider";
 // Admin Components
 import { AdminLogin } from "./components/admin/AdminLogin";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
-import { InternDashboard } from "./components/admin/InternDashboard";
+import { AnalyticsConsultantDashboard } from "./components/admin/InternDashboard";
 
 // LD SaaS Platform Components
 import HomePage from "./components/ld-saas-platform/HomePage";
@@ -192,7 +192,7 @@ function UserPortalRoute({ user, onLogin, onLogout }) {
         path="/intern"
         element={
           user && user.role === "intern" ? (
-            <InternDashboard user={user} onLogout={onLogout} />
+            <AnalyticsConsultantDashboard user={user} onLogout={onLogout} />
           ) : (
             <Navigate to="/admin-portal" replace />
           )

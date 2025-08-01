@@ -95,24 +95,43 @@ const industryDomains = [
   "Non-Profit",
 ];
 
-// Available integrations (same as admin dashboard)
+// Available datasources (same as admin dashboard)
 const availableIntegrations = [
-  "Salesforce",
-  "Databricks",
-  "MySQL",
+  "CSV",
+  "Excel",
+  "Google Sheet",
+  "Excel Sheet",
+  "PDF",
+  "Image",
+  "Video",
   "PostgreSQL",
+  "MySQL",
+  "MSSQL",
   "MongoDB",
-  "AWS S3",
-  "Azure",
-  "Google Cloud",
-  "Tableau",
-  "Power BI",
-  "Slack",
-  "Microsoft Teams",
-  "Jira",
-  "Confluence",
+  "Snowflake",
+  "Airtable",
+  "Databricks",
+  "Supabase",
+  "Neo4j",
+  "Zoho",
+  "Salesforce",
+  "ServiceNow",
+  "SAP",
   "HubSpot",
-  "Zendesk",
+  "FreshWorks",
+  "Odoo",
+  "Tally",
+  "IBM DB2",
+  "Elastic Search",
+  "InfluxDB",
+  "Apache Cassandra",
+  "Redis",
+  "TimescaleDB",
+  "Prometheus",
+  "Grafna Loki",
+  "Grafna Tempo",
+  "ClickHouse",
+  "Shopify",
 ];
 
 // Use cases for filtering
@@ -129,7 +148,7 @@ const smartcardUseCases = [
   "Automated insights and recommendations",
 ];
 
-export function InternDashboard({ user, onLogout }) {
+export function AnalyticsConsultantDashboard({ user, onLogout }) {
   const [requests, setRequests] = useState([]);
   const [demoAccounts, setDemoAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -492,7 +511,9 @@ export function InternDashboard({ user, onLogout }) {
               <User className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Intern Dashboard</h1>
+              <h1 className="text-lg font-bold text-white">
+                Analytics Consultant Dashboard
+              </h1>
               <p className="text-xs text-emerald-100">Welcome, {user.name}</p>
             </div>
           </div>
@@ -522,7 +543,7 @@ export function InternDashboard({ user, onLogout }) {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Intern Dashboard
+                  Analytics Consultant Dashboard
                 </h1>
                 <p className="text-sm text-gray-600 font-medium">
                   Welcome, {user.name} ({user.specialization})
@@ -551,16 +572,16 @@ export function InternDashboard({ user, onLogout }) {
                 {user.integrations && user.integrations.length > 0 && (
                   <div className="mt-2">
                     <p>
-                      <strong>Integrations:</strong>
+                      <strong>Datasources:</strong>
                     </p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {user.integrations.slice(0, 3).map((integration) => (
+                      {user.integrations.slice(0, 3).map((datasource) => (
                         <Badge
-                          key={integration}
+                          key={datasource}
                           variant="outline"
                           className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
                         >
-                          {integration}
+                          {datasource}
                         </Badge>
                       ))}
                       {user.integrations.length > 3 && (
@@ -1572,7 +1593,7 @@ export function InternDashboard({ user, onLogout }) {
 
                 <div className="space-y-2">
                   <Label className="text-gray-700 font-medium">
-                    Integration
+                    Datasource
                   </Label>
                   <Select
                     value={demoIntegrationFilter}
@@ -1582,10 +1603,10 @@ export function InternDashboard({ user, onLogout }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
-                      <SelectItem value="all">All Integrations</SelectItem>
-                      {availableIntegrations.map((integration) => (
-                        <SelectItem key={integration} value={integration}>
-                          {integration}
+                      <SelectItem value="all">All Datasources</SelectItem>
+                      {availableIntegrations.map((datasource) => (
+                        <SelectItem key={datasource} value={datasource}>
+                          {datasource}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1686,7 +1707,7 @@ export function InternDashboard({ user, onLogout }) {
 
                   <div className="space-y-2">
                     <Label className="text-gray-700 font-medium">
-                      Integration
+                      Datasource
                     </Label>
                     <Select
                       value={demoIntegrationFilter}
@@ -1696,10 +1717,10 @@ export function InternDashboard({ user, onLogout }) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
-                        <SelectItem value="all">All Integrations</SelectItem>
-                        {availableIntegrations.map((integration) => (
-                          <SelectItem key={integration} value={integration}>
-                            {integration}
+                        <SelectItem value="all">All Datasources</SelectItem>
+                        {availableIntegrations.map((datasource) => (
+                          <SelectItem key={datasource} value={datasource}>
+                            {datasource}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1781,7 +1802,7 @@ export function InternDashboard({ user, onLogout }) {
                           Industry
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 min-w-[200px]">
-                          Integrations
+                          Datasources
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700 min-w-[120px]">
                           Username
@@ -1884,25 +1905,25 @@ export function InternDashboard({ user, onLogout }) {
                                     <div className="flex items-center gap-2">
                                       <div className="flex flex-wrap gap-1 flex-1">
                                         {demo.selected_integrations
-                                          .slice(0, 3)
-                                          .map((integration) => (
+                                          .slice(0, 2)
+                                          .map((datasource) => (
                                             <Badge
-                                              key={integration}
+                                              key={datasource}
                                               variant="outline"
                                               className="text-xs bg-purple-50 text-purple-700 border-purple-200"
                                             >
-                                              {integration}
+                                              {datasource}
                                             </Badge>
                                           ))}
                                         {demo.selected_integrations.length >
-                                          3 && (
+                                          2 && (
                                           <Badge
                                             variant="outline"
                                             className="text-xs bg-gray-50 text-gray-600 border-gray-200"
                                           >
                                             +
                                             {demo.selected_integrations.length -
-                                              3}
+                                              2}
                                           </Badge>
                                         )}
                                       </div>
@@ -1922,7 +1943,7 @@ export function InternDashboard({ user, onLogout }) {
                                     </div>
                                   ) : (
                                     <span className="text-sm text-gray-400">
-                                      No integrations
+                                      No datasources
                                     </span>
                                   )}
                                 </div>
@@ -2229,6 +2250,47 @@ export function InternDashboard({ user, onLogout }) {
                     {selectedRequest.primary_use_case || "Not specified"}
                   </div>
                 </div>
+
+                {/* Selected Datasources */}
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900">
+                    Selected Datasources
+                  </h3>
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                    {selectedRequest.selected_integrations &&
+                    selectedRequest.selected_integrations.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedRequest.selected_integrations.map(
+                          (datasource) => (
+                            <Badge
+                              key={datasource}
+                              variant="outline"
+                              className="bg-indigo-100 text-indigo-700 border-indigo-300"
+                            >
+                              {datasource}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-500">
+                        No datasources selected
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Custom Integration */}
+                {selectedRequest.custom_integration && (
+                  <div>
+                    <h3 className="font-semibold mb-2 text-gray-900">
+                      Custom Integration
+                    </h3>
+                    <div className="bg-orange-50 p-4 rounded-lg text-sm border border-orange-200">
+                      {selectedRequest.custom_integration}
+                    </div>
+                  </div>
+                )}
 
                 {/* Admin Note */}
                 {selectedRequest.admin_note && (
@@ -2580,10 +2642,10 @@ export function InternDashboard({ user, onLogout }) {
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-gray-900">
                 {selectedDemoForView?.first_name}{" "}
-                {selectedDemoForView?.last_name} - Integrations
+                {selectedDemoForView?.last_name} - Datasources
               </DialogTitle>
               <DialogDescription className="text-gray-600">
-                All integrations selected for this demo account
+                All datasources selected for this demo account
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -2591,20 +2653,20 @@ export function InternDashboard({ user, onLogout }) {
               selectedDemoForView.selected_integrations.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                   {selectedDemoForView.selected_integrations.map(
-                    (integration) => (
+                    (datasource) => (
                       <Badge
-                        key={integration}
+                        key={datasource}
                         variant="outline"
                         className="text-sm bg-purple-50 text-purple-700 border-purple-200 p-2"
                       >
-                        {integration}
+                        {datasource}
                       </Badge>
                     )
                   )}
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="text-gray-500">No integrations selected</div>
+                  <div className="text-gray-500">No datasources selected</div>
                 </div>
               )}
             </div>

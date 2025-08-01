@@ -77,26 +77,41 @@ export default function RegisterPage() {
   ];
 
   const availableIntegrations = [
+    "CSV",
+    "Excel",
+    "Google Sheet",
+    "Excel Sheet",
+    "PDF",
+    "Image",
+    "Video",
+    "PostgreSQL",
+    "MySQL",
+    "MSSQL",
+    "MongoDB",
+    "Snowflake",
+    "Airtable",
+    "Databricks",
+    "Supabase",
+    "Neo4j",
+    "Zoho",
     "Salesforce",
+    "ServiceNow",
+    "SAP",
     "HubSpot",
-    "Microsoft Teams",
-    "Slack",
-    "Zoom",
-    "Google Workspace",
-    "Microsoft 365",
-    "Tableau",
-    "Power BI",
-    "AWS",
-    "Azure",
+    "FreshWorks",
+    "Odoo",
+    "Tally",
+    "IBM DB2",
+    "Elastic Search",
+    "InfluxDB",
+    "Apache Cassandra",
+    "Redis",
+    "TimescaleDB",
+    "Prometheus",
+    "Grafna Loki",
+    "Grafna Tempo",
+    "ClickHouse",
     "Shopify",
-    "WordPress",
-    "Zapier",
-    "Monday.com",
-    "Asana",
-    "Trello",
-    "Jira",
-    "GitHub",
-    "GitLab",
   ];
 
   const demoUseCases = [
@@ -469,141 +484,70 @@ export default function RegisterPage() {
                 </>
               )}
 
-              {/* Demo-specific fields */}
-              {accountType === "demo" && (
-                <>
-                  {/* Integrations Selection */}
-                  <div className="space-y-3">
-                    <Label>Integrations to Test</Label>
-                    <p className="text-sm text-gray-600">
-                      Select the integrations you'd like to explore during your
-                      demo
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
-                      {availableIntegrations.map((integration) => (
-                        <div
-                          key={integration}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={integration}
-                            checked={formData.selectedIntegrations.includes(
-                              integration
-                            )}
-                            onCheckedChange={(checked) =>
-                              handleIntegrationChange(integration, checked)
-                            }
-                          />
-                          <Label
-                            htmlFor={integration}
-                            className="text-sm font-normal cursor-pointer"
-                          >
-                            {integration}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                    {formData.selectedIntegrations.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {formData.selectedIntegrations.map((integration) => (
-                          <Badge
-                            key={integration}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {integration}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              {/* Custom Integration */}
+              <div className="space-y-2">
+                <Label htmlFor="customIntegration">
+                  Custom Integration (Optional)
+                </Label>
+                <Textarea
+                  id="customIntegration"
+                  placeholder="e.g., SAP, Oracle, Custom API, etc."
+                  value={formData.customIntegration}
+                  onChange={(e) =>
+                    handleInputChange("customIntegration", e.target.value)
+                  }
+                  rows={2}
+                />
+                <p className="text-xs text-gray-500">
+                  Mention any specific integration not listed above that you'd
+                  like to test
+                </p>
+              </div>
 
-                  {/* Custom Integration */}
-                  <div className="space-y-2">
-                    <Label htmlFor="customIntegration">
-                      Custom Integration (Optional)
-                    </Label>
-                    <Textarea
-                      id="customIntegration"
-                      placeholder="e.g., SAP, Oracle, Custom API, etc."
-                      value={formData.customIntegration}
-                      onChange={(e) =>
-                        handleInputChange("customIntegration", e.target.value)
-                      }
-                      rows={2}
-                    />
-                    <p className="text-xs text-gray-500">
-                      Mention any specific integration not listed above that
-                      you'd like to test
-                    </p>
-                  </div>
-
-                  {/* Demo Use Case */}
-                  <div className="space-y-2">
-                    <Label htmlFor="demoUseCaseType">Demo Use Case</Label>
-                    <Select
-                      value={formData.demoUseCaseType}
-                      onValueChange={(value) =>
-                        handleInputChange("demoUseCaseType", value)
-                      }
+              {/* Integrations Selection */}
+              <div className="space-y-3">
+                <Label>Integrations</Label>
+                <p className="text-sm text-gray-600">
+                  Select the integrations you'd like to use
+                </p>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                  {availableIntegrations.map((integration) => (
+                    <div
+                      key={integration}
+                      className="flex items-center space-x-2"
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="predefined">
-                          Select common use case
-                        </SelectItem>
-                        <SelectItem value="custom">
-                          Describe custom use case
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {formData.demoUseCaseType === "custom" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="customDemoUseCase">Custom Use Case</Label>
-                      <Textarea
-                        id="customDemoUseCase"
-                        placeholder="Describe your specific demo use case..."
-                        value={formData.customDemoUseCase}
-                        onChange={(e) =>
-                          handleInputChange("customDemoUseCase", e.target.value)
+                      <Checkbox
+                        id={integration}
+                        checked={formData.selectedIntegrations.includes(
+                          integration
+                        )}
+                        onCheckedChange={(checked) =>
+                          handleIntegrationChange(integration, checked)
                         }
-                        rows={3}
                       />
-                      <p className="text-xs text-gray-500">
-                        Please describe your specific use case requirements
-                      </p>
+                      <Label
+                        htmlFor={integration}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {integration}
+                      </Label>
                     </div>
-                  )}
-
-                  {/* What would you like to test? */}
-                  <div className="space-y-2">
-                    <Label htmlFor="demoTestingUseCase">
-                      What would you like to test?
-                    </Label>
-                    <Select
-                      value={formData.demoTestingUseCase}
-                      onValueChange={(value) =>
-                        handleInputChange("demoTestingUseCase", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your common use case" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {demoTestingUseCases.map((useCase) => (
-                          <SelectItem key={useCase} value={useCase}>
-                            {useCase}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  ))}
+                </div>
+                {formData.selectedIntegrations.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {formData.selectedIntegrations.map((integration) => (
+                      <Badge
+                        key={integration}
+                        variant="secondary"
+                        className="text-xs"
+                      >
+                        {integration}
+                      </Badge>
+                    ))}
                   </div>
-                </>
-              )}
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="accountType">Account Type</Label>

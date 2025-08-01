@@ -157,9 +157,9 @@ def create_free_trial_request(data):
         # Prepare use case data
         primary_use_case = data.get('primaryUseCase') or data.get('customPrimaryUseCase', '')
         
-        # Prepare integrations data for demo accounts
+        # Prepare integrations data for all account types
         selected_integrations = None
-        if data.get('accountType') == 'demo' and data.get('selectedIntegrations'):
+        if data.get('selectedIntegrations'):
             selected_integrations = json.dumps(data.get('selectedIntegrations'))
         
         # Handle demo account specific fields
@@ -400,10 +400,11 @@ def get_intern_by_credentials(username, password):
     return dict(intern) if intern else None
 
 def get_intern_customer_companies(intern_id):
-    """Get list of company names for customers assigned to an intern"""
+    """Get list of company names for customers assigned to an intern (both customer requests and demo accounts)"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    # Get companies from customer requests
     cursor.execute('''
         SELECT DISTINCT company 
         FROM free_trial_requests 
@@ -411,10 +412,80 @@ def get_intern_customer_companies(intern_id):
         ORDER BY company
     ''', (intern_id,))
     
-    companies = cursor.fetchall()
+    customer_companies = cursor.fetchall()
+    
+    # Get companies from demo accounts
+    cursor.execute('''
+        SELECT DISTINCT company 
+        FROM demo_credentials 
+        WHERE assigned_intern_id = ?
+        ORDER BY company
+    ''', (intern_id,))
+    
+    demo_companies = cursor.fetchall()
+    
+    # Combine and return unique companies
+    all_companies = [company[0] for company in customer_companies + demo_companies]
     conn.close()
     
-    return [company[0] for company in companies]
+    return list(set(all_companies))  # Remove duplicates
+
+def get_intern_customer_requests(intern_id):
+    """Get all customer requests assigned to an intern"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT * FROM free_trial_requests 
+        WHERE assigned_intern_id = ?
+        ORDER BY created_at DESC
+    ''', (intern_id,))
+    
+    requests = cursor.fetchall()
+    conn.close()
+    
+    # Convert to dict and parse JSON fields
+    result = []
+    for request in requests:
+        request_dict = dict(request)
+        
+        # Parse JSON fields
+        try:
+            if request_dict.get('selected_integrations'):
+                request_dict['selected_integrations'] = json.loads(request_dict['selected_integrations'])
+        except json.JSONDecodeError:
+            request_dict['selected_integrations'] = []
+            
+        result.append(request_dict)
+    
+    return result
+
+
+
+def get_intern_assigned_count(intern_id):
+    """Get total assigned count for an intern (customer requests + demo accounts)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Count customer requests
+    cursor.execute('''
+        SELECT COUNT(*) FROM free_trial_requests 
+        WHERE assigned_intern_id = ?
+    ''', (intern_id,))
+    
+    customer_count = cursor.fetchone()[0]
+    
+    # Count demo accounts
+    cursor.execute('''
+        SELECT COUNT(*) FROM demo_credentials 
+        WHERE assigned_intern_id = ?
+    ''', (intern_id,))
+    
+    demo_count = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return customer_count + demo_count
 
 def create_intern_record(data):
     """Create a new intern"""
@@ -788,10 +859,15 @@ def update_customer_basic_info(customer_id, customer_data):
     try:
         cursor = conn.cursor()
         
+        # Prepare integrations data
+        selected_integrations = None
+        if customer_data.get('selected_integrations'):
+            selected_integrations = json.dumps(customer_data.get('selected_integrations'))
+        
         cursor.execute('''
             UPDATE free_trial_requests 
             SET first_name = ?, last_name = ?, email = ?, company = ?, 
-                phone = ?, industry_domain = ?, updated_at = CURRENT_TIMESTAMP
+                phone = ?, industry_domain = ?, selected_integrations = ?, custom_integration = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (
             customer_data.get('first_name'),
@@ -800,6 +876,8 @@ def update_customer_basic_info(customer_id, customer_data):
             customer_data.get('company'),
             customer_data.get('phone'),
             customer_data.get('industry_domain'),
+            selected_integrations,
+            customer_data.get('custom_integration'),
             customer_id
         ))
         

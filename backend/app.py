@@ -15,6 +15,8 @@ from database import (
     get_requests_for_intern,
     update_intern_note,
     get_intern_customer_companies,
+    get_intern_customer_requests,
+    get_intern_assigned_count,
     get_db_connection,
     create_demo_credentials,
     get_companies_assigned_to_interns,
@@ -194,13 +196,16 @@ def get_admin_dashboard():
 
 @app.route('/api/admin/interns', methods=['GET'])
 def get_admin_interns():
-    """Get all interns for admin with their customer companies"""
+    """Get all interns for admin with their customer companies, customer requests, demo accounts, and correct assigned count"""
     try:
         interns = get_all_interns()
         
-        # Add customer companies for each intern
+        # Add detailed data for each intern
         for intern in interns:
             intern['customer_companies'] = get_intern_customer_companies(intern['id'])
+            intern['customer_requests'] = get_intern_customer_requests(intern['id'])
+            intern['demo_accounts'] = get_demo_accounts_for_intern(intern['id'])
+            intern['assigned_count'] = get_intern_assigned_count(intern['id'])
         
         return jsonify({
             'success': True,
@@ -985,6 +990,39 @@ def update_demo_admin_note_endpoint(demo_id):
         return jsonify({
             'success': False,
             'message': f'Error updating demo admin note: {str(e)}'
+        }), 500
+
+@app.route('/api/admin/refresh-demo-expiry', methods=['POST'])
+def refresh_demo_expiry():
+    """Refresh demo account expiry status"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get current timestamp
+        cursor.execute('SELECT datetime("now")')
+        current_time = cursor.fetchone()[0]
+        
+        # Update expired demo accounts
+        cursor.execute('''
+            UPDATE demo_credentials 
+            SET is_active = 0 
+            WHERE expires_at < ? AND is_active = 1
+        ''', (current_time,))
+        
+        expired_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Updated {expired_count} expired demo accounts',
+            'expired_count': expired_count
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error refreshing demo expiry: {str(e)}'
         }), 500
 
 @app.route('/api/admin/demos/<int:demo_id>/intern-note', methods=['PUT'])

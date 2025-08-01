@@ -116,6 +116,7 @@ export const apiService = {
       apiClient.put(`/admin/demos/${demoId}/intern-note`, {
         intern_note: internNote,
       }),
+    refreshDemoExpiry: () => apiClient.post("/admin/refresh-demo-expiry"),
   },
 
   // Notifications

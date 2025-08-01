@@ -18,7 +18,7 @@ export default defineConfig({
       "Access-Control-Allow-Origin": "*",
     },
     allowedHosts: [
-      "be4d06f3cf8f.ngrok-free.app", // ← replace with your current ngrok domain
+      "19613d1ff797.ngrok-free.app", // ← replace with your current ngrok domain
     ],
   },
   build: {
